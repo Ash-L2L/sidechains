@@ -856,7 +856,7 @@ bool BlockAssembler::GenerateBMMBlock(CBlock& block, std::string& strError, CAmo
         #ifndef ENABLE_WALLET
             strError = "No wallet active!\n";
             return false;
-        #else    
+        #else
         if (vpwallets.empty()) {
             strError = "No wallet active!\n";
             return false;

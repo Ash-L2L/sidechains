@@ -84,20 +84,49 @@ void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possi
     cachedCoinsUsage += it->second.coin.DynamicMemoryUsage();
 }
 
-void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, bool check) {
+void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint32_t nAssetID, const CAmount amountAssetIn, int nControlN, uint32_t nNewAssetID, bool check) {
     bool fCoinbase = tx.IsCoinBase();
     const uint256& txid = tx.GetHash();
-    for (size_t i = 0; i < tx.vout.size(); ++i) {
-        bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
-        // Always set the possible_overwrite flag to AddCoin for coinbase txn, in order to correctly
-        // deal with the pre-BIP30 occurrences of duplicate coinbase transactions.
-        cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase), overwrite);
+
+    if (amountAssetIn > 0) {
+        // One of the input coins is a BitName, coins adding up to the asset
+        // input amount will be marked as BitNames
+
+        // Label BitName outputs until we account for all BitName input
+        CAmount amountAssetOut = CAmount(0);
+        for (size_t i = 0; i < tx.vout.size(); ++i) {
+            bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
+            bool fAsset = amountAssetIn > amountAssetOut;
+            bool fControl = nControlN >= 0 && (int)i == nControlN;
+            uint32_t nID = nNewAssetID ? nNewAssetID : nAssetID;
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fAsset, fControl, fAsset ? nID : 0), overwrite);
+            if (fAsset)
+                amountAssetOut += tx.vout[i].nValue;
+        }
+    }
+    else
+    {
+        // The first two outputs of a BitName creation transaction are
+        // 0: controller output
+        // 1: genesis output
+        // The rest are normal outputs
+        bool fNewAsset = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+        for (size_t i = 0; i < tx.vout.size(); ++i) {
+            bool fAsset = fNewAsset && i < 2;
+            bool fControl = fNewAsset && i == 0;
+            uint32_t nID = nNewAssetID ? nNewAssetID : nAssetID;
+            bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fAsset, fControl, fAsset ? nID : 0), overwrite);
+        }
     }
 }
 
-bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, Coin* moveout) {
+bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, bool& fBitName, bool& fBitNameControl, uint32_t& nAssetID, Coin* moveout) {
     CCoinsMap::iterator it = FetchCoin(outpoint);
     if (it == cacheCoins.end()) return false;
+    fBitName = it->second.coin.fBitName;
+    fBitNameControl = it->second.coin.fBitNameControl;
+    nAssetID = it->second.coin.nAssetID;
     cachedCoinsUsage -= it->second.coin.DynamicMemoryUsage();
     if (moveout) {
         *moveout = std::move(it->second.coin);

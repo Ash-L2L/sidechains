@@ -34,6 +34,9 @@ static const char DB_LAST_BLOCK = 'l';
 static const char DB_LAST_SIDECHAIN_DEPOSIT = 'x';
 static const char DB_LAST_SIDECHAIN_WITHDRAWAL_BUNDLE = 'w';
 
+static const char DB_ASSET = 'A';
+static const char DB_ASSET_LAST_ID = 'I';
+
 namespace {
 
 struct CoinEntry {
@@ -580,6 +583,68 @@ bool CSidechainTreeDB::HaveWithdrawalBundle(const uint256& hashWithdrawalBundle)
     return false;
 }
 
+BitNameDB::BitNameDB(size_t nCacheSize, bool fMemory, bool fWipe)
+    : CDBWrapper(GetDataDir() / "blocks" / "BitNames", nCacheSize, fMemory, fWipe) { }
+
+bool BitNameDB::WriteBitNames(const std::vector<BitName>& vAsset)
+{
+    CDBBatch batch(*this);
+    for (const BitName& asset : vAsset) {
+        std::pair<char, uint32_t> key = std::make_pair(DB_ASSET, asset.nID);
+        batch.Write(key, asset);
+    }
+    return WriteBatch(batch, true);
+}
+
+std::vector<BitName> BitNameDB::GetAssets()
+{
+    std::ostringstream ss;
+    ::Serialize(ss, std::make_pair(DB_ASSET, 0));
+
+    std::vector<BitName> vAsset;
+
+    std::unique_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(ss.str());
+    while (pcursor->Valid()) {
+        boost::this_thread::interruption_point();
+
+        std::pair<char, uint32_t> key;
+        BitName asset;
+        if (pcursor->GetKey(key) && key.first == DB_ASSET) {
+            if (pcursor->GetValue(asset))
+                vAsset.push_back(asset);
+        }
+
+        pcursor->Next();
+    }
+    return vAsset;
+}
+
+bool BitNameDB::GetLastAssetID(uint32_t& nID)
+{
+    // Look up the last asset ID (in chronological order)
+    if (!Read(DB_ASSET_LAST_ID, nID))
+        return false;
+
+    return true;
+}
+
+bool BitNameDB::WriteLastAssetID(const uint32_t nID)
+{
+    return Write(DB_ASSET_LAST_ID, nID);
+}
+
+bool BitNameDB::RemoveAsset(const uint32_t nID)
+{
+    std::pair<char, uint32_t> key = std::make_pair(DB_ASSET, nID);
+    return Erase(key);
+}
+
+bool BitNameDB::GetAsset(const uint32_t nID, BitName& asset)
+{
+    return Read(std::make_pair(DB_ASSET, nID), asset);
+}
+
 namespace {
 
 //! Legacy class to deserialize pre-pertxout database entries without reindex.
@@ -678,7 +743,7 @@ bool CCoinsViewDB::Upgrade() {
             COutPoint outpoint(key.second, 0);
             for (size_t i = 0; i < old_coins.vout.size(); ++i) {
                 if (!old_coins.vout[i].IsNull() && !old_coins.vout[i].scriptPubKey.IsUnspendable()) {
-                    Coin newcoin(std::move(old_coins.vout[i]), old_coins.nHeight, old_coins.fCoinBase);
+                    Coin newcoin(std::move(old_coins.vout[i]), old_coins.nHeight, old_coins.fCoinBase, false, false, 0);
                     outpoint.n = i;
                     CoinEntry entry(&outpoint);
                     batch.Write(entry, newcoin);

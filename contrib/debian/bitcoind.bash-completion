@@ -1,2 +1,2 @@
-contrib/testchaind.bash-completion	testchaind
-contrib/testchain-cli.bash-completion	testchain-cli
+contrib/bitnamesd.bash-completion	bitnamesd
+contrib/bitnames-cli.bash-completion	bitnames-cli

@@ -38,21 +38,46 @@ public:
     //! at which height this containing transaction was included in the active block chain
     uint32_t nHeight : 31;
 
+    // TODO instead of tracking this, we could just check if the asset ID
+    // is > 0 (the default bitcoin asset reserves the first ID)
+    //! Is this a BitName?
+    bool fBitName;
+
+    //! Is this a BitName controller?
+    bool fBitNameControl;
+
+    uint32_t nAssetID;
+
     //! construct a Coin from a CTxOut and height/coinbase information.
-    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn) {}
-    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn) : out(outIn), fCoinBase(fCoinBaseIn),nHeight(nHeightIn) {}
+    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameIn, bool fBitNameControlIn, uint32_t nAssetIDIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitName(fBitNameIn), fBitNameControl(fBitNameControlIn), nAssetID(nAssetIDIn) {}
+    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameIn, bool fBitNameControlIn, uint32_t nAssetIDIn) : out(outIn), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitName(fBitNameIn), fBitNameControl(fBitNameControlIn), nAssetID(nAssetIDIn) {}
 
     void Clear() {
         out.SetNull();
         fCoinBase = false;
         nHeight = 0;
+        fBitName = false;
+        fBitNameControl = false;
+        nAssetID = 0;
     }
 
     //! empty constructor
-    Coin() : fCoinBase(false), nHeight(0) { }
+    Coin() : fCoinBase(false), nHeight(0), fBitName(false), fBitNameControl(false), nAssetID(0) { }
 
     bool IsCoinBase() const {
         return fCoinBase;
+    }
+
+    bool IsBitName() const {
+        return fBitName;
+    }
+
+    bool IsBitNameController() const {
+        return fBitNameControl;
+    }
+
+    uint32_t GetAssetID() const {
+        return nAssetID;
     }
 
     template<typename Stream>
@@ -61,6 +86,9 @@ public:
         uint32_t code = nHeight * 2 + fCoinBase;
         ::Serialize(s, VARINT(code));
         ::Serialize(s, CTxOutCompressor(REF(out)));
+        ::Serialize(s, fBitName);
+        ::Serialize(s, fBitNameControl);
+        ::Serialize(s, nAssetID);
     }
 
     template<typename Stream>
@@ -70,6 +98,9 @@ public:
         nHeight = code >> 1;
         fCoinBase = code & 1;
         ::Unserialize(s, REF(CTxOutCompressor(out)));
+        ::Unserialize(s, fBitName);
+        ::Unserialize(s, fBitNameControl);
+        ::Unserialize(s, nAssetID);
     }
 
     bool IsSpent() const {
@@ -203,7 +234,7 @@ class CCoinsViewCache : public CCoinsViewBacked
 protected:
     /**
      * Make mutable so that we can "fill the cache" even from Get-methods
-     * declared as "const".  
+     * declared as "const".
      */
     mutable uint256 hashBlock;
     mutable CCoinsMap cacheCoins;
@@ -259,7 +290,7 @@ public:
      * If no unspent output exists for the passed outpoint, this call
      * has no effect.
      */
-    bool SpendCoin(const COutPoint &outpoint, Coin* moveto = nullptr);
+    bool SpendCoin(const COutPoint &outpoint, bool& fBitName, bool& fBitNameControl, uint32_t& nAssetID, Coin* moveto = nullptr);
 
     /**
      * Push the modifications applied to this cache to its base.
@@ -280,7 +311,7 @@ public:
     //! Calculate the size of the cache (in bytes)
     size_t DynamicMemoryUsage() const;
 
-    /** 
+    /**
      * Amount of bitcoins coming in to a transaction
      * Note that lightweight clients may not know anything besides the hash of previous transactions,
      * so may not be able to calculate this.
@@ -303,7 +334,7 @@ private:
 // an overwrite.
 // TODO: pass in a boolean to limit these possible overwrites to known
 // (pre-BIP34) cases.
-void AddCoins(CCoinsViewCache& cache, const CTransaction& tx, int nHeight, bool check = false);
+void AddCoins(CCoinsViewCache& cache, const CTransaction& tx, int nHeight, uint32_t nAssetID, const CAmount amountAssetIn, int nControlN = -1, uint32_t nNewAssetID = 0, bool check = false);
 
 //! Utility function to find any unspent output with a given txid.
 // This function can be quite expensive because in the event of a transaction

@@ -976,7 +976,7 @@ void SidechainPage::CheckConfiguration(bool& fConfig, bool& fConnection)
 
     // Do we have configuration files for the mainchain & sidechain?
     fs::path pathConfMain = pathDrivechainData / "drivechain.conf";
-    fs::path pathConfSide = pathSide / "testchain.conf";
+    fs::path pathConfSide = pathSide / "bitnames.conf";
 
     // Do drivechain.conf & side.conf exist?
     if (fs::exists(pathConfMain) && fs::exists(pathConfSide))

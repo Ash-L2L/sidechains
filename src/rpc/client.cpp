@@ -150,6 +150,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "refreshbmm", 0, "amount" },
     { "refreshbmm", 1, "createnew" },
     { "getmainchainblockhash", 0, "height" },
+    // BitNames
+    { "createasset", 3, "fee" },
+    { "createasset", 4, "supply" },
+    { "transferasset", 3, "amount" },
 };
 
 class CRPCConvertTable

@@ -446,7 +446,7 @@ UniValue echo(const JSONRPCRequest& request)
             "echo|echojson \"message\" ...\n"
             "\nSimply echo back the input arguments. This command is for testing.\n"
             "\nThe difference between echo and echojson is that echojson has argument conversion enabled in the client-side table in"
-            "testchain-cli and the GUI. There is no server-side difference."
+            "bitnames-cli and the GUI. There is no server-side difference."
         );
 
     return request.params;
@@ -460,7 +460,7 @@ static UniValue getinfo_deprecated(const JSONRPCRequest& request)
         "- getblockchaininfo: blocks, difficulty, chain\n"
         "- getnetworkinfo: version, protocolversion, timeoffset, connections, proxy, relayfee, warnings\n"
         "- getwalletinfo: balance, keypoololdest, keypoolsize, paytxfee, unlocked_until, walletversion\n"
-        "\ntestchain-cli has the option -getinfo to collect and format these in the old format."
+        "\nbitnames-cli has the option -getinfo to collect and format these in the old format."
     );
 }
 
@@ -805,6 +805,38 @@ UniValue formatdepositaddress(const JSONRPCRequest& request)
     return strDepositAddress;
 }
 
+UniValue listassets(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size())
+        throw std::runtime_error(
+            "listassets\n"
+            "\nList BitNames\n"
+            "\nResult:\n"
+            "Array of BitNames\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listassets", "")
+            + HelpExampleRpc("listassets", "")
+        );
+
+    std::vector<BitName> vAsset = passettree->GetAssets();
+
+    UniValue result(UniValue::VARR);
+    for (const BitName& b : vAsset) {
+        UniValue obj(UniValue::VOBJ);
+        obj.pushKV("id", (uint64_t)b.nID);
+        obj.pushKV("ticker", b.strTicker);
+        obj.pushKV("supply", b.nSupply);
+        obj.pushKV("headline", b.strHeadline);
+        obj.pushKV("payload", b.payload.ToString());
+        obj.pushKV("txid", b.txid.ToString());
+        obj.pushKV("controller", b.strController);
+        obj.pushKV("owner", b.strOwner);
+        result.push_back(obj);
+    }
+
+    return result;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           argNames
   //  --------------------- ------------------------    -----------------------    ----------
@@ -834,6 +866,8 @@ static const CRPCCommand commands[] =
     { "sidechain",          "getwithdrawal",                &getwithdrawal,                 {"id"}},
     { "sidechain",          "formatdepositaddress",         &formatdepositaddress,          {"address"}},
 
+    /* BitNames */
+    { "BitNames",          "listassets",                   &listassets,                    {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

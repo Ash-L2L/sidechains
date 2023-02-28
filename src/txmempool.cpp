@@ -14,6 +14,7 @@
 #include <reverse_iterator.h>
 #include <streams.h>
 #include <timedata.h>
+#include <undo.h>
 #include <util.h>
 #include <utilmoneystr.h>
 #include <utiltime.h>
@@ -624,7 +625,11 @@ static void CheckInputsAndUpdateCoins(const CTransaction& tx, CCoinsViewCache& m
     CAmount txfee = 0;
     bool fCheckResult = tx.IsCoinBase() || Consensus::CheckTxInputs(tx, state, mempoolDuplicate, spendheight, txfee);
     assert(fCheckResult);
-    UpdateCoins(tx, mempoolDuplicate, 1000000);
+    CAmount amountAssetIn = CAmount(0);
+    int nControlN = -1;
+    uint32_t nAssetID = 0;
+    CTxUndo undo;
+    UpdateCoins(tx, mempoolDuplicate, undo, 1000000, amountAssetIn, nControlN, nAssetID);
 }
 
 void CTxMemPool::check(const CCoinsViewCache *pcoins) const
@@ -906,7 +911,9 @@ bool CCoinsViewMemPool::GetCoin(const COutPoint &outpoint, Coin &coin) const {
     CTransactionRef ptx = mempool.get(outpoint.hash);
     if (ptx) {
         if (outpoint.n < ptx->vout.size()) {
-            coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false);
+            // TODO setting fBitName info false / 0 here. It doesn't seem like any
+            // callers will require that info.
+            coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, false, false, 0);
             return true;
         } else {
             return false;

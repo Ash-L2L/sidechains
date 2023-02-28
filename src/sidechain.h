@@ -39,7 +39,7 @@
 /* Sidechain Identifiers */
 
 //! Sidechain number
-static const unsigned int THIS_SIDECHAIN = 0;
+static const unsigned int THIS_SIDECHAIN = 4;
 
 //! Sidechain build commit hash
 static const std::string SIDECHAIN_BUILD_COMMIT_HASH = "a67a177c615cf2e228ab4027faa48a745e448c38";
@@ -105,6 +105,43 @@ struct SidechainObj {
     uint256 GetHash(void) const;
     CScript GetScript(void) const;
     virtual std::string ToString(void) const;
+};
+
+struct BitNameObj {
+    char assetop;
+
+    BitNameObj(void) { }
+    virtual ~BitNameObj(void) { }
+
+    CScript GetScript(void) const;
+};
+
+/**
+ * BitName
+ */
+struct BitName : public BitNameObj {
+    uint32_t nID;
+    std::string strTicker;
+    std::string strHeadline;
+    uint256 payload;
+    uint256 txid;
+    int64_t nSupply;
+    std::string strController;
+    std::string strOwner;
+
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nID);
+        READWRITE(strTicker);
+        READWRITE(strHeadline);
+        READWRITE(payload);
+        READWRITE(txid);
+        READWRITE(nSupply);
+        READWRITE(strController);
+        READWRITE(strOwner);
+    }
 };
 
 /**
