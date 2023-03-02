@@ -106,14 +106,14 @@ public:
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
          * a large 32-bit integer with any alignment.
          */
-        pchMessageStart[0] = 0xcf;
-        pchMessageStart[1] = 0xdd;
-        pchMessageStart[2] = 0x4f;
-        pchMessageStart[3] = 0xc5;
-        nDefaultPort = 2599;
+        pchMessageStart[0] = 0x1a;
+        pchMessageStart[1] = 0xc2;
+        pchMessageStart[2] = 0x18;
+        pchMessageStart[3] = 0x3d;
+        nDefaultPort = 2600;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1668667160, 1, 0);
+        genesis = CreateGenesisBlock(1677671991, 1, 0);
         consensus.hashGenesisBlock = genesis.GetHash();
 
         assert(consensus.hashGenesisBlock == uint256S("0x359d17fc7cc60653fb72bbec271efab88af16ba9f15a55b060fe632c7de5e978"));
@@ -173,7 +173,7 @@ public:
         consensus.nPowTargetSpacing = 10 * 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;
-        consensus.nRuleChangeActivationThreshold = 108; // 75% for bitnamess
+        consensus.nRuleChangeActivationThreshold = 108; // 75% for bitnames
         consensus.nMinerConfirmationWindow = 144; // Faster than normal for regtest (144 instead of 2016)
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 0;
@@ -188,14 +188,14 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x6fb2c5081b13ecf369b324db61406244c7df519b4676e28b536a4ef546e387eb");
 
-        pchMessageStart[0] = 0xdf;
-        pchMessageStart[1] = 0xfa;
-        pchMessageStart[2] = 0x5b;
-        pchMessageStart[3] = 0xad;
-        nDefaultPort = 12743;
+        pchMessageStart[0] = 0x36;
+        pchMessageStart[1] = 0x4d;
+        pchMessageStart[2] = 0x1c;
+        pchMessageStart[3] = 0x0c;
+        nDefaultPort = 12744;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1645394098, 1, 0);
+        genesis = CreateGenesisBlock(1677672170, 1, 0);
         consensus.hashGenesisBlock = genesis.GetHash();
 
         assert(consensus.hashGenesisBlock == uint256S("0x6fb2c5081b13ecf369b324db61406244c7df519b4676e28b536a4ef546e387eb"));
