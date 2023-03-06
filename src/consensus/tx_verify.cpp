@@ -170,8 +170,8 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
 
     bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
     std::vector<CTxOut>::const_iterator it;
-    if (fBitName && tx.vout.size() > 2)
-        it = tx.vout.begin() + 2;
+    if (fBitName && tx.vout.size() > 1)
+        it = tx.vout.begin() + 1;
     else
         it = tx.vout.begin();
 

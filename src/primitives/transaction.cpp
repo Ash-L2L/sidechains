@@ -55,7 +55,7 @@ std::string CTxOut::ToString() const
 }
 
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nLockTime(0) {}
-CMutableTransaction::CMutableTransaction(const CTransaction& tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), ticker(tx.ticker), headline(tx.headline), payload(tx.payload) {}
+CMutableTransaction::CMutableTransaction(const CTransaction& tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), name(tx.name) {}
 
 uint256 CMutableTransaction::GetHash() const
 {
@@ -76,18 +76,18 @@ uint256 CTransaction::GetWitnessHash() const
 }
 
 /* For backward compatibility, the hash is initialized to 0. TODO: remove the need for this default constructor entirely. */
-CTransaction::CTransaction() : vin(), vout(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), ticker(""), headline(""), payload(), hash() {}
-CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), ticker(tx.ticker), headline(tx.headline), payload(tx.payload), hash(ComputeHash()) {}
-CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), ticker(tx.ticker), headline(tx.headline), payload(tx.payload), hash(ComputeHash()) {}
+CTransaction::CTransaction() : vin(), vout(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), name(""), hash() {}
+CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), name(tx.name), hash(ComputeHash()) {}
+CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), name(tx.name), hash(ComputeHash()) {}
 
 CAmount CTransaction::GetValueOut() const
 {
     bool fBitName = nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
 
-    // Skip the controller and genesis output of a BitName creation
+    // Skip the BitName output of a BitName creation
     std::vector<CTxOut>::const_iterator it;
-    if (fBitName && vout.size() >= 2)
-        it = vout.begin() + 2;
+    if (fBitName && vout.size() >= 1)
+        it = vout.begin() + 1;
     else
         it = vout.begin();
 

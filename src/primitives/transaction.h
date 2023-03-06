@@ -194,7 +194,7 @@ struct CMutableTransaction;
  *   - CTxWitness wit;
  * - uint32_t nLockTime
  *
- * Create Assets version 10 tx:
+ * Create BitName version 10 tx:
  * - int32_t nVersion
  * - unsigned char dummy = 0x00
  * - unsigned char flags (!= 0)
@@ -203,9 +203,7 @@ struct CMutableTransaction;
  * - if (flags & 1):
  *   - CTxWitness wit;
  * - uint32_t nLockTime
- * - string ticker
- * - string headline
- * - uint256 payload
+ * - string name
  *
  */
 template<typename Stream, typename TxType>
@@ -246,9 +244,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     s >> tx.nLockTime;
 
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-        s >> tx.ticker;
-        s >> tx.headline;
-        s >> tx.payload;
+        s >> tx.name;
     }
 }
 
@@ -283,9 +279,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-        s << tx.ticker;
-        s << tx.headline;
-        s << tx.payload;
+        s << tx.name;
     }
 }
 
@@ -317,9 +311,7 @@ public:
 
     const unsigned char replayBytes = 0x3f;
 
-    const std::string ticker;
-    const std::string headline;
-    const uint256 payload;
+    const std::string name;
 
 private:
     /** Memory only. */

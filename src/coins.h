@@ -40,17 +40,17 @@ public:
 
     // TODO instead of tracking this, we could just check if the asset ID
     // is > 0 (the default bitcoin asset reserves the first ID)
+    //! Is this a BitName Reservation?
+    bool fBitNameReservation;
+
     //! Is this a BitName?
     bool fBitName;
-
-    //! Is this a BitName controller?
-    bool fBitNameControl;
 
     uint32_t nAssetID;
 
     //! construct a Coin from a CTxOut and height/coinbase information.
-    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameIn, bool fBitNameControlIn, uint32_t nAssetIDIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitName(fBitNameIn), fBitNameControl(fBitNameControlIn), nAssetID(nAssetIDIn) {}
-    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameIn, bool fBitNameControlIn, uint32_t nAssetIDIn) : out(outIn), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitName(fBitNameIn), fBitNameControl(fBitNameControlIn), nAssetID(nAssetIDIn) {}
+    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint32_t nAssetIDIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
+    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint32_t nAssetIDIn) : out(outIn), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
 
     void Clear() {
         out.SetNull();
@@ -62,18 +62,18 @@ public:
     }
 
     //! empty constructor
-    Coin() : fCoinBase(false), nHeight(0), fBitName(false), fBitNameControl(false), nAssetID(0) { }
+    Coin() : fCoinBase(false), nHeight(0), fBitNameReservation(false), fBitName(false), nAssetID(0) { }
 
     bool IsCoinBase() const {
         return fCoinBase;
     }
 
-    bool IsBitName() const {
-        return fBitName;
+    bool IsBitNameReservation() const {
+        return fBitNameReservation;
     }
 
-    bool IsBitNameController() const {
-        return fBitNameControl;
+    bool IsBitName() const {
+        return fBitName;
     }
 
     uint32_t GetAssetID() const {
@@ -86,8 +86,8 @@ public:
         uint32_t code = nHeight * 2 + fCoinBase;
         ::Serialize(s, VARINT(code));
         ::Serialize(s, CTxOutCompressor(REF(out)));
+        ::Serialize(s, fBitNameReservation);
         ::Serialize(s, fBitName);
-        ::Serialize(s, fBitNameControl);
         ::Serialize(s, nAssetID);
     }
 
@@ -98,8 +98,8 @@ public:
         nHeight = code >> 1;
         fCoinBase = code & 1;
         ::Unserialize(s, REF(CTxOutCompressor(out)));
+        ::Unserialize(s, fBitNameReservation);
         ::Unserialize(s, fBitName);
-        ::Unserialize(s, fBitNameControl);
         ::Unserialize(s, nAssetID);
     }
 
@@ -290,7 +290,7 @@ public:
      * If no unspent output exists for the passed outpoint, this call
      * has no effect.
      */
-    bool SpendCoin(const COutPoint &outpoint, bool& fBitName, bool& fBitNameControl, uint32_t& nAssetID, Coin* moveto = nullptr);
+    bool SpendCoin(const COutPoint &outpoint, bool& fBitNameReservation, bool& fBitName, uint32_t& nAssetID, Coin* moveto = nullptr);
 
     /**
      * Push the modifications applied to this cache to its base.
