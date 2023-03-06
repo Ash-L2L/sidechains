@@ -108,6 +108,7 @@ struct SidechainObj {
 };
 
 struct BitNameObj {
+    // FIXME: what does this do?
     char assetop;
 
     BitNameObj(void) { }
@@ -121,26 +122,16 @@ struct BitNameObj {
  */
 struct BitName : public BitNameObj {
     uint32_t nID;
-    std::string strTicker;
-    std::string strHeadline;
-    uint256 payload;
+    std::string strName;
     uint256 txid;
-    int64_t nSupply;
-    std::string strController;
-    std::string strOwner;
 
     ADD_SERIALIZE_METHODS
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nID);
-        READWRITE(strTicker);
-        READWRITE(strHeadline);
-        READWRITE(payload);
+        READWRITE(strName);
         READWRITE(txid);
-        READWRITE(nSupply);
-        READWRITE(strController);
-        READWRITE(strOwner);
     }
 };
 

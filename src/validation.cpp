@@ -1415,20 +1415,20 @@ void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState 
     }
 }
 
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, CAmount& amountAssetInOut, int& nControlNOut, uint32_t& nAssetIDOut, uint32_t nNewAssetIDIn)
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint32_t& nAssetIDOut, uint32_t nNewAssetIDIn)
 {
     amountAssetInOut = CAmount(0); // Track asset inputs
-    nControlNOut = -1; // Track asset controller outputs
+    nBitNameNOut = -1; // Track bitname outputs
     nAssetIDOut = 0; // Track asset ID
     if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
         // mark inputs spent
         for (size_t x = 0; x < tx.vin.size(); x++) {
             txundo.vprevout.emplace_back();
+            bool fBitNameReservation = false;
             bool fBitName = false;
-            bool fBitNameControl = false;
             uint32_t nAssetID = 0;
-            bool is_spent = inputs.SpendCoin(tx.vin[x].prevout, fBitName, fBitNameControl, nAssetID, &txundo.vprevout.back());
+            bool is_spent = inputs.SpendCoin(tx.vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &txundo.vprevout.back());
 
             // Update nAssetIDOut if SpendCoin returns a non-zero asset ID
             if (nAssetID)
@@ -1436,16 +1436,16 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
 
             assert(is_spent);
 
-            if (fBitName)
+            if (fBitNameReservation)
                 amountAssetInOut += txundo.vprevout.back().out.nValue;
 
-            if (fBitNameControl)
-                nControlNOut = x;
+            if (fBitName)
+                nBitNameNOut = x;
         }
     }
 
     // add outputs
-    AddCoins(inputs, tx, nHeight, nAssetIDOut, amountAssetInOut, nControlNOut, nNewAssetIDIn);
+    AddCoins(inputs, tx, nHeight, nAssetIDOut, amountAssetInOut, nBitNameNOut, nNewAssetIDIn);
 }
 
 bool CScriptCheck::operator()() {
@@ -1732,10 +1732,10 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
             if (!scriptPubKey.IsUnspendable()) {
                 COutPoint out(hash, o);
                 Coin coin;
+                bool fBitNameReservation = false;
                 bool fBitName = false;
-                bool fBitNameControl = false;
                 uint32_t nAssetID = 0;
-                bool is_spent = view.SpendCoin(out, fBitName, fBitNameControl, nAssetID, &coin);
+                bool is_spent = view.SpendCoin(out, fBitNameReservation, fBitName, nAssetID, &coin);
                 if (!is_spent || tx.vout[o] != coin.out || pindex->nHeight != coin.nHeight || is_coinbase != coin.fCoinBase) {
                     fClean = false; // transaction output mismatch
                 }
@@ -2129,7 +2129,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     std::multimap<std::pair<CScript, CAmount>, uint256> mapRefundOutputs;
     std::vector<SidechainWithdrawal> vRefundedWithdrawal;
     std::set<uint256> setRefundWithdrawalID;
-    std::vector<BitName> vAsset;
+    std::vector<BitName> vBitName;
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = *(block.vtx[i]);
@@ -2320,7 +2320,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         // New asset created - set asset ID # and update BitNameDB
         uint32_t nNewAssetID = 0;
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-            if (tx.vout.size() < 2) {
+            if (tx.vout.size() < 1) {
                 return state.DoS(100, error("ConnectBlock(): Invalid BitName creation - vout too small"),
                                  REJECT_INVALID, "bad-asset-vout-small");
             }
@@ -2328,42 +2328,19 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             uint32_t nIDLast = 0;
             passettree->GetLastAssetID(nIDLast);
 
-            BitName asset;
-            asset.nID = nIDLast + 1;
-            asset.strTicker = tx.ticker;
-            asset.strHeadline = tx.headline;
-            asset.payload = tx.payload;
-            asset.txid = tx.GetHash();
-            asset.nSupply = tx.vout[1].nValue;
+            BitName bitname;
+            bitname.nID = nIDLast + 1;
+            bitname.strName = tx.name;
+            bitname.txid = tx.GetHash();
 
-            CTxDestination controllerDest;
-            if (ExtractDestination(tx.vout[0].scriptPubKey, controllerDest)) {
-                asset.strController = EncodeDestination(controllerDest);
-            }
-            else
-            if (tx.vout[0].scriptPubKey.size() && tx.vout[0].scriptPubKey[0] == OP_RETURN) {
-                asset.strController = "OP_RETURN";
-            }
-            else {
-                return state.DoS(100, error("ConnectBlock(): Invalid BitName creation - controller destination invalid"),
-                                 REJECT_INVALID, "bad-asset-controller-dest");
-            }
-
-            CTxDestination ownerDest;
-            if (!ExtractDestination(tx.vout[1].scriptPubKey, ownerDest)) {
-                    return state.DoS(100, error("ConnectBlock(): Invalid BitName creation - owner destination invalid"),
-                                     REJECT_INVALID, "bad-asset-owner-dest");
-            }
-            asset.strOwner = EncodeDestination(ownerDest);
-
-            vAsset.push_back(asset);
+            vBitName.push_back(bitname);
 
             // Update latest BitName ID #
-            if (!fJustCheck && !passettree->WriteLastAssetID(asset.nID))
+            if (!fJustCheck && !passettree->WriteLastAssetID(bitname.nID))
                 return error("%s: Failed to update last BitName ID #!\n", __func__);
 
             // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
-            nNewAssetID = asset.nID;
+            nNewAssetID = bitname.nID;
         }
 
         CTxUndo undoDummy;
@@ -2372,13 +2349,13 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
 
         CAmount amountAssetIn = CAmount(0);
-        int nControlN = -1;
+        int nBitNameN = -1;
         uint32_t nAssetID = 0;
-        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, amountAssetIn, nControlN, nAssetID, nNewAssetID);
+        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, amountAssetIn, nBitNameN, nAssetID, nNewAssetID);
 
         BitNameTransactionData data;
         data.amountAssetIn = amountAssetIn;
-        data.nControlN = nControlN;
+        data.nBitNameN = nBitNameN;
         data.nAssetID = nNewAssetID ? nNewAssetID : nAssetID;
         data.txid = tx.GetHash();
         if (connectTrace && (amountAssetIn > 0 || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION))
@@ -2688,8 +2665,8 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     }
 
     // Write asset objects to db
-    if (vAsset.size()) {
-        if (!passettree->WriteBitNames(vAsset))
+    if (vBitName.size()) {
+        if (!passettree->WriteBitNames(vBitName))
             return state.Error("Failed to write BitName index!");
     }
 
@@ -4882,24 +4859,24 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
     }
 
     CAmount amountAssetIn = CAmount(0);
-    int nControlN = -1;
+    int nBitNameN = -1;
     for (const CTransactionRef& tx : block.vtx) {
         if (!tx->IsCoinBase()) {
             for (size_t x = 0; x < tx->vin.size(); x++) {
+                bool fBitNameReservation = false;
                 bool fBitName = false;
-                bool fBitNameControl = false;
                 uint32_t nAssetID = 0;
                 Coin coin;
-                inputs.SpendCoin(tx->vin[x].prevout, fBitName, fBitNameControl, nAssetID, &coin);
+                inputs.SpendCoin(tx->vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &coin);
 
-                if (fBitName)
+                if (fBitNameReservation)
                     amountAssetIn += coin.out.nValue;
-                if (fBitNameControl)
-                    nControlN = x;
+                if (fBitName)
+                    nBitNameN = x;
             }
         }
         // Pass check = true as every addition may be an overwrite.
-        AddCoins(inputs, *tx, pindex->nHeight, amountAssetIn, nControlN, true);
+        AddCoins(inputs, *tx, pindex->nHeight, amountAssetIn, nBitNameN, true);
     }
     return true;
 }

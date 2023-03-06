@@ -55,7 +55,7 @@ struct LockPoints;
 struct BitNameTransactionData {
     uint256 txid;
     CAmount amountAssetIn;
-    int nControlN;
+    int nBitNameN;
     uint32_t nAssetID;
 };
 
@@ -347,7 +347,7 @@ int VersionBitsTipStateSinceHeight(const Consensus::Params& params, Consensus::D
 
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight, CAmount& amountAssetInOut, int& nControlNOut, uint32_t& nAssetIDOut, const uint32_t nNewAssetIDIn = 0);
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint32_t& nAssetIDOut, const uint32_t nNewAssetIDIn = 0);
 
 /** Transaction validation functions */
 

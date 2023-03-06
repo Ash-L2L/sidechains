@@ -805,32 +805,27 @@ UniValue formatdepositaddress(const JSONRPCRequest& request)
     return strDepositAddress;
 }
 
-UniValue listassets(const JSONRPCRequest& request)
+UniValue listbitnames(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size())
         throw std::runtime_error(
-            "listassets\n"
+            "listbitnames\n"
             "\nList BitNames\n"
             "\nResult:\n"
             "Array of BitNames\n"
             "\nExamples:\n"
-            + HelpExampleCli("listassets", "")
-            + HelpExampleRpc("listassets", "")
+            + HelpExampleCli("listbitnames", "")
+            + HelpExampleRpc("listbitnames", "")
         );
 
-    std::vector<BitName> vAsset = passettree->GetAssets();
+    std::vector<BitName> vBitname = passettree->GetBitNames();
 
     UniValue result(UniValue::VARR);
-    for (const BitName& b : vAsset) {
+    for (const BitName& b : vBitname) {
         UniValue obj(UniValue::VOBJ);
         obj.pushKV("id", (uint64_t)b.nID);
-        obj.pushKV("ticker", b.strTicker);
-        obj.pushKV("supply", b.nSupply);
-        obj.pushKV("headline", b.strHeadline);
-        obj.pushKV("payload", b.payload.ToString());
+        obj.pushKV("name", b.strName);
         obj.pushKV("txid", b.txid.ToString());
-        obj.pushKV("controller", b.strController);
-        obj.pushKV("owner", b.strOwner);
         result.push_back(obj);
     }
 
@@ -867,7 +862,7 @@ static const CRPCCommand commands[] =
     { "sidechain",          "formatdepositaddress",         &formatdepositaddress,          {"address"}},
 
     /* BitNames */
-    { "BitNames",          "listassets",                   &listassets,                    {}},
+    { "BitNames",          "listbitnames",                  &listbitnames,                  {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

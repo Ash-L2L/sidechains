@@ -175,10 +175,10 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
             } else {
                 removed_an_entry = true;
                 coin.Clear();
+                bool fBitNameReservation= false;
                 bool fBitName = false;
-                bool fBitNameControl = false;
                 uint32_t nAssetID = 0;
-                stack.back()->SpendCoin(COutPoint(txid, 0), fBitName, fBitNameControl, nAssetID);
+                stack.back()->SpendCoin(COutPoint(txid, 0), fBitNameReservation, fBitName, nAssetID);
             }
         }
 
@@ -380,9 +380,9 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             // Call UpdateCoins on the top cache
             CTxUndo undo;
             CAmount amountAssetIn = CAmount(0);
-            int nControlN = -1;
+            int nBitNameN = -1;
             uint32_t nAssetID = 0;
-            UpdateCoins(tx, *(stack.back()), undo, height, amountAssetIn, nControlN, nAssetID);
+            UpdateCoins(tx, *(stack.back()), undo, height, amountAssetIn, nBitNameN, nAssetID);
 
             // Update the utxo set for future spends
             utxoset.insert(outpoint);
@@ -408,10 +408,10 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             // Disconnect the tx from the current UTXO
             // See code in DisconnectBlock
             // remove outputs
+            bool fBitNameRegistration = false;
             bool fBitName = false;
-            bool fBitNameControl = false;
             uint32_t nAssetID = 0;
-            stack.back()->SpendCoin(utxod->first, fBitName, fBitNameControl, nAssetID);
+            stack.back()->SpendCoin(utxod->first, fBitNameRegistration, fBitName, nAssetID);
             // restore inputs
             if (!tx.IsCoinBase()) {
                 const COutPoint &out = tx.vin[0].prevout;
@@ -668,10 +668,10 @@ BOOST_AUTO_TEST_CASE(ccoins_access)
 void CheckSpendCoins(CAmount base_value, CAmount cache_value, CAmount expected_value, char cache_flags, char expected_flags)
 {
     SingleEntryCacheTest test(base_value, cache_value, cache_flags);
+    bool fBitNameReservation = false;
     bool fBitName = false;
-    bool fBitNameControl = false;
     uint32_t nAssetID = 0;
-    test.cache.SpendCoin(OUTPOINT, fBitName, fBitNameControl, nAssetID);
+    test.cache.SpendCoin(OUTPOINT, fBitNameReservation, fBitName, nAssetID);
     test.cache.SelfTest();
 
     CAmount result_value;
