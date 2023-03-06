@@ -56,8 +56,8 @@ public:
         out.SetNull();
         fCoinBase = false;
         nHeight = 0;
+        fBitNameReservation = false;
         fBitName = false;
-        fBitNameControl = false;
         nAssetID = 0;
     }
 

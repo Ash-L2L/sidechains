@@ -397,9 +397,7 @@ struct CMutableTransaction
     uint32_t nLockTime;
     unsigned char replayBytes = 0x3f;
 
-    std::string ticker;
-    std::string headline;
-    uint256 payload;
+    std::string name;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);
