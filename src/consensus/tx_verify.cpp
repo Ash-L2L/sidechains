@@ -170,10 +170,16 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
 
     bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
     std::vector<CTxOut>::const_iterator it;
-    if (fBitName && tx.vout.size() > 1)
-        it = tx.vout.begin() + 1;
-    else
-        it = tx.vout.begin();
+    it = tx.vout.begin();
+    // FIXME: when is tx vout size 0?
+    if (fBitName && tx.vout.size() > 1) {
+        // The first output from a create bitname tx must have a value of 1
+        if (it->nValue > 1)
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
+        else if (it->nValue < 0)
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
+        it++;
+    }
 
     // Check for negative or overflow output values
     CAmount nValueOut = 0;
@@ -219,6 +225,21 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
     if (!inputs.HaveInputs(tx)) {
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-missingorspent", false,
                          strprintf("%s: inputs missing/spent", __func__));
+    }
+
+    // in a create bitname tx, if the 'name' field is set (registration), then
+    // there must exist a bitname reservation input at the last index of the
+    // inputs, for which the reserved hashedName must be equal to the hash of
+    // txinputshash+payload+name, where the txinputshash is tha hash of tx
+    // inputs for the tx that created the bitname reservation.
+    bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+    if (fBitName) {
+        if (!tx.name.empty()) {
+            const COutPoint& lastOutpoint = tx.vin.back().prevout;
+            const Coin& lastInputCoin = inputs.AccessCoin(lastOutpoint);
+            
+            // FIXME/TODO
+        }
     }
 
     CAmount nValueIn = 0;
