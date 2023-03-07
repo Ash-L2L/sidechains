@@ -163,13 +163,13 @@ class BitNameDB : public CDBWrapper
 {
 public:
     BitNameDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
-    bool WriteBitNames(const std::vector<BitName>& vAsset);
+    bool WriteBitNames(const std::vector<BitName>& vBitName);
 
-    std::vector<BitName> GetAssets();
+    std::vector<BitName> GetBitNames();
 
     bool GetLastAssetID(uint32_t& nID);
     bool WriteLastAssetID(const uint32_t nID);
-    bool GetAsset(const uint32_t nID, BitName& asset);
+    bool GetBitName(const uint32_t nID, BitName& bitname);
 
     bool RemoveAsset(const uint32_t nID);
 };

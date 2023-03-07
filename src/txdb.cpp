@@ -586,22 +586,22 @@ bool CSidechainTreeDB::HaveWithdrawalBundle(const uint256& hashWithdrawalBundle)
 BitNameDB::BitNameDB(size_t nCacheSize, bool fMemory, bool fWipe)
     : CDBWrapper(GetDataDir() / "blocks" / "BitNames", nCacheSize, fMemory, fWipe) { }
 
-bool BitNameDB::WriteBitNames(const std::vector<BitName>& vAsset)
+bool BitNameDB::WriteBitNames(const std::vector<BitName>& vBitName)
 {
     CDBBatch batch(*this);
-    for (const BitName& asset : vAsset) {
-        std::pair<char, uint32_t> key = std::make_pair(DB_ASSET, asset.nID);
-        batch.Write(key, asset);
+    for (const BitName& bitname : vBitName) {
+        std::pair<char, uint32_t> key = std::make_pair(DB_ASSET, bitname.nID);
+        batch.Write(key, bitname);
     }
     return WriteBatch(batch, true);
 }
 
-std::vector<BitName> BitNameDB::GetAssets()
+std::vector<BitName> BitNameDB::GetBitNames()
 {
     std::ostringstream ss;
     ::Serialize(ss, std::make_pair(DB_ASSET, 0));
 
-    std::vector<BitName> vAsset;
+    std::vector<BitName> vBitName;
 
     std::unique_ptr<CDBIterator> pcursor(NewIterator());
     pcursor->Seek(ss.str());
@@ -609,15 +609,15 @@ std::vector<BitName> BitNameDB::GetAssets()
         boost::this_thread::interruption_point();
 
         std::pair<char, uint32_t> key;
-        BitName asset;
+        BitName bitname;
         if (pcursor->GetKey(key) && key.first == DB_ASSET) {
-            if (pcursor->GetValue(asset))
-                vAsset.push_back(asset);
+            if (pcursor->GetValue(bitname))
+                vBitName.push_back(bitname);
         }
 
         pcursor->Next();
     }
-    return vAsset;
+    return vBitName;
 }
 
 bool BitNameDB::GetLastAssetID(uint32_t& nID)
@@ -640,9 +640,9 @@ bool BitNameDB::RemoveAsset(const uint32_t nID)
     return Erase(key);
 }
 
-bool BitNameDB::GetAsset(const uint32_t nID, BitName& asset)
+bool BitNameDB::GetBitName(const uint32_t nID, BitName& bitname)
 {
-    return Read(std::make_pair(DB_ASSET, nID), asset);
+    return Read(std::make_pair(DB_ASSET, nID), bitname);
 }
 
 namespace {

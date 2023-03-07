@@ -2333,34 +2333,14 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             bitname.strName = tx.name;
             bitname.txid = tx.GetHash();
 
-            CTxDestination controllerDest;
-            if (ExtractDestination(tx.vout[0].scriptPubKey, controllerDest)) {
-                asset.strController = EncodeDestination(controllerDest);
-            }
-            else
-            if (tx.vout[0].scriptPubKey.size() && tx.vout[0].scriptPubKey[0] == OP_RETURN) {
-                asset.strController = "OP_RETURN";
-            }
-            else {
-                return state.DoS(100, error("ConnectBlock(): Invalid BitName creation - controller destination invalid"),
-                                 REJECT_INVALID, "bad-asset-controller-dest");
-            }
-
-            CTxDestination ownerDest;
-            if (!ExtractDestination(tx.vout[1].scriptPubKey, ownerDest)) {
-                    return state.DoS(100, error("ConnectBlock(): Invalid BitName creation - owner destination invalid"),
-                                     REJECT_INVALID, "bad-asset-owner-dest");
-            }
-            asset.strOwner = EncodeDestination(ownerDest);
-
-            vAsset.push_back(asset);
+            vBitName.push_back(asset);
 
             // Update latest BitName ID #
-            if (!fJustCheck && !passettree->WriteLastAssetID(asset.nID))
+            if (!fJustCheck && !passettree->WriteLastAssetID(bitname.nID))
                 return error("%s: Failed to update last BitName ID #!\n", __func__);
 
             // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
-            nNewAssetID = asset.nID;
+            nNewAssetID = bitname.nID;
         }
 
         CTxUndo undoDummy;
@@ -2369,13 +2349,13 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
 
         CAmount amountAssetIn = CAmount(0);
-        int nControlN = -1;
+        int nBitNameN = -1;
         uint32_t nAssetID = 0;
-        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, amountAssetIn, nControlN, nAssetID, nNewAssetID);
+        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, amountAssetIn, nBitNameN, nAssetID, nNewAssetID);
 
         BitNameTransactionData data;
         data.amountAssetIn = amountAssetIn;
-        data.nControlN = nControlN;
+        data.nBitNameN = nBitNameN;
         data.nAssetID = nNewAssetID ? nNewAssetID : nAssetID;
         data.txid = tx.GetHash();
         if (connectTrace && (amountAssetIn > 0 || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION))
@@ -2685,8 +2665,8 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     }
 
     // Write asset objects to db
-    if (vAsset.size()) {
-        if (!passettree->WriteBitNames(vAsset))
+    if (vBitName.size()) {
+        if (!passettree->WriteBitNames(vBitName))
             return state.Error("Failed to write BitName index!");
     }
 
@@ -4879,24 +4859,24 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
     }
 
     CAmount amountAssetIn = CAmount(0);
-    int nControlN = -1;
+    int nBitNameN = -1;
     for (const CTransactionRef& tx : block.vtx) {
         if (!tx->IsCoinBase()) {
             for (size_t x = 0; x < tx->vin.size(); x++) {
+                bool fBitNameReservation = false;
                 bool fBitName = false;
-                bool fBitNameControl = false;
                 uint32_t nAssetID = 0;
                 Coin coin;
-                inputs.SpendCoin(tx->vin[x].prevout, fBitName, fBitNameControl, nAssetID, &coin);
+                inputs.SpendCoin(tx->vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &coin);
 
-                if (fBitName)
+                if (fBitNameReservation)
                     amountAssetIn += coin.out.nValue;
-                if (fBitNameControl)
-                    nControlN = x;
+                if (fBitName)
+                    nBitNameN = x;
             }
         }
         // Pass check = true as every addition may be an overwrite.
-        AddCoins(inputs, *tx, pindex->nHeight, amountAssetIn, nControlN, true);
+        AddCoins(inputs, *tx, pindex->nHeight, amountAssetIn, nBitNameN, true);
     }
     return true;
 }
