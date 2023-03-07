@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <amount.h>
+#include <netaddress.h>
 #include <script/script.h>
 #include <serialize.h>
 #include <uint256.h>
@@ -194,7 +195,7 @@ struct CMutableTransaction;
  *   - CTxWitness wit;
  * - uint32_t nLockTime
  *
- * Create BitName version 10 tx:
+ * Create/Reserve BitName version 10 tx:
  * - int32_t nVersion
  * - unsigned char dummy = 0x00
  * - unsigned char flags (!= 0)
@@ -203,7 +204,11 @@ struct CMutableTransaction;
  * - if (flags & 1):
  *   - CTxWitness wit;
  * - uint32_t nLockTime
- * - string name
+ * - uint256 commitment
+ * - string name (ignored for reservations)
+ * - uint256 sok (only used for registrations)
+ * - bool fIn4 (only used for registrations, to register an ipv4 addr)
+ * - in_addr in4 (only used for registrations)
  *
  */
 template<typename Stream, typename TxType>
@@ -244,7 +249,13 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     s >> tx.nLockTime;
 
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        s >> tx.commitment;
         s >> tx.name;
+        s >> tx.sok;
+        s >> tx.fIn4;
+        uint32_t in4;
+        ::Unserialize(s, in4);
+        tx.in4.s_addr = htonl(in4);
     }
 }
 
@@ -279,7 +290,11 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        s << tx.commitment;
         s << tx.name;
+        s << tx.sok;
+        s << tx.fIn4;
+        s << ntohl(tx.in4.s_addr);
     }
 }
 
@@ -311,7 +326,12 @@ public:
 
     const unsigned char replayBytes = 0x3f;
 
-    const std::string name;
+    const uint256 commitment = uint256();
+    const std::string name = "";
+    // statement of knowledge for registering BitName
+    const uint256 sok = uint256();
+    const bool fIn4 = false;
+    const in_addr in4 = { .s_addr = 0 };
 
 private:
     /** Memory only. */
@@ -397,7 +417,11 @@ struct CMutableTransaction
     uint32_t nLockTime;
     unsigned char replayBytes = 0x3f;
 
-    std::string name;
+    uint256 commitment = uint256();
+    std::string name = "";
+    uint256 sok = uint256();
+    bool fIn4 = false;
+    in_addr in4 = { .s_addr = 0 };
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

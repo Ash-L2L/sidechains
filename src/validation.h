@@ -34,6 +34,7 @@
 
 class BMMCache;
 class BitNameDB;
+class BitNameReservationDB;
 class ConnectTrace;
 class CBlockIndex;
 class CBlockTreeDB;
@@ -54,9 +55,12 @@ struct LockPoints;
 
 struct BitNameTransactionData {
     uint256 txid;
+    // FIXME: remove
     CAmount amountAssetIn;
+    // FIXME: remove
     int nBitNameN;
-    uint32_t nAssetID;
+    // FIXME: rename
+    uint256 nAssetID;
 };
 
 /** Default for -whitelistrelay. */
@@ -347,7 +351,7 @@ int VersionBitsTipStateSinceHeight(const Consensus::Params& params, Consensus::D
 
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint32_t& nAssetIDOut, const uint32_t nNewAssetIDIn = 0);
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint256& nAssetIDOut, const uint256 nNewAssetIDIn = uint256());
 
 /** Transaction validation functions */
 
@@ -504,7 +508,9 @@ extern std::unique_ptr<CBlockTreeDB> pblocktree;
 /** Global variable that points to the active sidechain tree (protected by cs_main) */
 extern std::unique_ptr<CSidechainTreeDB> psidechaintree;
 /** Global variable that points to the active BitName tree (protected by cs_main) */
-extern std::unique_ptr<BitNameDB> passettree;
+extern std::unique_ptr<BitNameDB> pbitnametree;
+/** Global variable that points to the active BitName Reservation tree (protected by cs_main) */
+extern std::unique_ptr<BitNameReservationDB> pbitnamereservationtree;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().

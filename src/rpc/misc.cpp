@@ -818,13 +818,88 @@ UniValue listbitnames(const JSONRPCRequest& request)
             + HelpExampleRpc("listbitnames", "")
         );
 
-    std::vector<BitName> vBitname = passettree->GetBitNames();
+    std::vector<BitName> vBitName = pbitnametree->GetBitNames();
 
     UniValue result(UniValue::VARR);
-    for (const BitName& b : vBitname) {
+    for (const BitName& b : vBitName) {
         UniValue obj(UniValue::VOBJ);
-        obj.pushKV("id", (uint64_t)b.nID);
+        obj.pushKV("id", b.nID.ToString());
         obj.pushKV("name", b.strName);
+        obj.pushKV("commitment", b.commitment.ToString());
+        obj.pushKV("txid", b.txid.ToString());
+        if (b.fIn4) {
+            struct in_addr in4;
+            in4.s_addr = b.in4;
+
+            obj.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
+        }
+        result.push_back(obj);
+    }
+
+    return result;
+}
+
+UniValue resolvebitname(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "resolvebitname\n"
+            "\nArguments:\n"
+            "1. \"BitName (string, required) the BitName to resolve\"\n"
+            "\nResolve BitNames\n"
+            "\nResult:\n"
+            "BitName data\n"
+            "\nExamples:\n"
+            + HelpExampleCli("resolvebitname", "")
+            + HelpExampleRpc("resolvebitname", "")
+        );
+
+    std::string strBitName = request.params[0].get_str();
+    if (strBitName.empty())
+        throw JSONRPCError(RPC_MISC_ERROR, "Invalid BitName provided");
+
+
+    BitName bitname;
+    if (!pbitnametree->GetBitName(strBitName, bitname)) {
+        throw JSONRPCError(RPC_MISC_ERROR, "BitName not found");
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("id", bitname.nID.ToString());
+    result.pushKV("name", bitname.strName);
+    result.pushKV("commitment", bitname.commitment.ToString());
+    result.pushKV("txid", bitname.txid.ToString());
+    if (bitname.fIn4) {
+        struct in_addr in4;
+        in4.s_addr = bitname.in4;
+
+        result.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
+    }
+
+    return result;
+}
+
+UniValue listbitnamereservations(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size())
+        throw std::runtime_error(
+            "listbitnamereservations\n"
+            "\nList BitName Reservations\n"
+            "\nResult:\n"
+            "Array of BitName Reservations\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listbitnamereservations", "")
+            + HelpExampleRpc("listbitnamereservations", "")
+        );
+
+    std::vector<BitNameReservation> vBitnameReservation =
+        pbitnamereservationtree->GetBitNameReservations();
+
+    UniValue result(UniValue::VARR);
+    for (const BitNameReservation& b : vBitnameReservation) {
+        UniValue obj(UniValue::VOBJ);
+        obj.pushKV("id", b.nID.ToString());
+        obj.pushKV("hashedName", b.hashedName.ToString());
         obj.pushKV("txid", b.txid.ToString());
         result.push_back(obj);
     }
@@ -863,6 +938,8 @@ static const CRPCCommand commands[] =
 
     /* BitNames */
     { "BitNames",          "listbitnames",                  &listbitnames,                  {}},
+    { "BitNames",          "resolvebitname",                &resolvebitname,                {"bitname"}},
+    { "BitNames",          "listbitnamereservations",       &listbitnamereservations,       {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

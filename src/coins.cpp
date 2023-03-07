@@ -84,7 +84,7 @@ void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possi
     cachedCoinsUsage += it->second.coin.DynamicMemoryUsage();
 }
 
-void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint32_t nAssetID, const CAmount amountAssetIn, int nBitNameN, uint32_t nNewAssetID, bool check) {
+void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint256 nAssetID, const CAmount amountAssetIn, int nBitNameN, uint256 nNewAssetID, bool check) {
     bool fCoinbase = tx.IsCoinBase();
     const uint256& txid = tx.GetHash();
 
@@ -98,8 +98,8 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint3
             bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
             bool fAsset = amountAssetIn > amountAssetOut;
             bool fBitName = nBitNameN >= 0 && (int)i == nBitNameN;
-            uint32_t nID = nNewAssetID ? nNewAssetID : nAssetID;
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fAsset, fBitName, fAsset ? nID : 0), overwrite);
+            uint256 nID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fAsset, fBitName, fAsset ? nID : uint256()), overwrite);
             if (fAsset)
                 amountAssetOut += tx.vout[i].nValue;
         }
@@ -109,19 +109,20 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint3
         // The first output of a BitName creation transaction is the bitname
         // output.
         // The rest are normal outputs
-        bool fNewAsset = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+        bool fNewReservation = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
         for (size_t i = 0; i < tx.vout.size(); ++i) {
-            bool fBitName = fNewAsset && i == 0;
-            uint32_t nID = nNewAssetID ? nNewAssetID : nAssetID;
+            bool fBitNameReservation = fNewReservation && i == 0;
+            uint256 nID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
             bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false, fBitName, fBitName ? nID : 0), overwrite);
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fBitNameReservation, false, fBitNameReservation ? nID : uint256(), fBitNameReservation ? tx.commitment : uint256()), overwrite);
         }
     }
 }
 
-bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, bool& fBitNameReservation, bool& fBitName, uint32_t& nAssetID, Coin* moveout) {
+bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, bool& fBitNameReservation, bool& fBitName, uint256& nAssetID, Coin* moveout) {
     CCoinsMap::iterator it = FetchCoin(outpoint);
     if (it == cacheCoins.end()) return false;
+    // FIXME: why are these fields not used?
     fBitNameReservation = it->second.coin.fBitNameReservation;
     fBitName = it->second.coin.fBitName;
     nAssetID = it->second.coin.nAssetID;

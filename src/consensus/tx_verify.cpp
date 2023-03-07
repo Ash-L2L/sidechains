@@ -5,6 +5,7 @@
 #include <consensus/tx_verify.h>
 
 #include <consensus/consensus.h>
+#include <hash.h>
 #include <primitives/transaction.h>
 #include <script/interpreter.h>
 #include <consensus/validation.h>
@@ -169,14 +170,23 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
 
 
     bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
-    std::vector<CTxOut>::const_iterator it;
-    if (fBitName && tx.vout.size() > 1)
-        it = tx.vout.begin() + 1;
-    else
-        it = tx.vout.begin();
+
+    // Create BitName transactions must have at least 1 output
+    if (fBitName && tx.vout.size() < 1)
+        return state.DoS(10, false, REJECT_INVALID, "bad-txns-create-bitname-vout-size");
 
     // Check for negative or overflow output values
     CAmount nValueOut = 0;
+    std::vector<CTxOut>::const_iterator it;
+    it = tx.vout.begin();
+    if (fBitName) {
+        // The first output from a create bitname tx must have a value of 1
+        if (it->nValue > 1)
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
+        else if (it->nValue < 0)
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
+        it++;
+    }
     for (; it != tx.vout.end(); it++)
     {
         if (it->nValue < 0)
@@ -221,6 +231,35 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                          strprintf("%s: inputs missing/spent", __func__));
     }
 
+    // in a create bitname tx, if the 'name' field is set (registration), then
+    // there must exist a bitname reservation input at the last index of the
+    // inputs, for which the reserved hashedName must be equal to the hash of
+    // txinputshash+commitment+name, where the txinputshash is tha hash of tx
+    // inputs for the tx that created the bitname reservation.
+    bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+    if (fBitName) {
+        if (!tx.name.empty()) {
+            const COutPoint& lastOutpoint = tx.vin.back().prevout;
+            const Coin& lastInputCoin = inputs.AccessCoin(lastOutpoint);
+            // last input coin must be a reservation
+            if (!lastInputCoin.fBitNameReservation)
+                return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-missing-reservation");
+            uint256 commitment = lastInputCoin.commitment;
+            std::string name = tx.name;
+            uint256 sok = tx.sok; // statement of knowledge, aka salt
+            // compute the hash of name + sok
+            uint256 hash_result;
+            const unsigned char* name_ptr =
+                reinterpret_cast<const unsigned char*>(name.c_str());
+            CHash256().Write(name_ptr, name.size())
+                      .Write(sok.begin(), sok.size())
+                      .Finalize((unsigned char*) &hash_result);
+            if (commitment != hash_result)
+                return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-wrong-commitment");
+        }
+    }
+
+    uint256 nAssetIDFound = uint256();
     CAmount nValueIn = 0;
     for (unsigned int i = 0; i < tx.vin.size(); ++i) {
         const COutPoint &prevout = tx.vin[i].prevout;
@@ -239,6 +278,12 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn)) {
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
         }
+
+        if ((coin.nAssetID != uint256()) && (nAssetIDFound != uint256()) && coin.nAssetID != nAssetIDFound)
+            return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-mixed-assets");
+
+        nAssetIDFound = coin.nAssetID;
+
     }
 
     const CAmount value_out = tx.GetValueOut();
