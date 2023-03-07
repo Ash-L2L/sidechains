@@ -34,6 +34,7 @@
 
 class BMMCache;
 class BitNameDB;
+class BitNameReservationDB;
 class ConnectTrace;
 class CBlockIndex;
 class CBlockTreeDB;
@@ -505,6 +506,8 @@ extern std::unique_ptr<CBlockTreeDB> pblocktree;
 extern std::unique_ptr<CSidechainTreeDB> psidechaintree;
 /** Global variable that points to the active BitName tree (protected by cs_main) */
 extern std::unique_ptr<BitNameDB> pbitnametree;
+/** Global variable that points to the active BitName Reservation tree (protected by cs_main) */
+extern std::unique_ptr<BitNameReservationDB> pbitnamereservationtree;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().

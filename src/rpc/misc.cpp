@@ -818,13 +818,41 @@ UniValue listbitnames(const JSONRPCRequest& request)
             + HelpExampleRpc("listbitnames", "")
         );
 
-    std::vector<BitName> vBitname = pbitnametree->GetBitNames();
+    std::vector<BitName> vBitName = pbitnametree->GetBitNames();
 
     UniValue result(UniValue::VARR);
-    for (const BitName& b : vBitname) {
+    for (const BitName& b : vBitName) {
         UniValue obj(UniValue::VOBJ);
         obj.pushKV("id", (uint64_t)b.nID);
         obj.pushKV("name", b.strName);
+        obj.pushKV("txid", b.txid.ToString());
+        result.push_back(obj);
+    }
+
+    return result;
+}
+
+UniValue listbitnamereservations(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size())
+        throw std::runtime_error(
+            "listbitnamereservations\n"
+            "\nList BitName Reservations\n"
+            "\nResult:\n"
+            "Array of BitName Reservations\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listbitnamereservations", "")
+            + HelpExampleRpc("listbitnamereservations", "")
+        );
+
+    std::vector<BitNameReservation> vBitnameReservation =
+        pbitnamereservationtree->GetBitNameReservations();
+
+    UniValue result(UniValue::VARR);
+    for (const BitNameReservation& b : vBitnameReservation) {
+        UniValue obj(UniValue::VOBJ);
+        obj.pushKV("id", (uint64_t)b.nID);
+        obj.pushKV("hashedName", b.hashedName.ToString());
         obj.pushKV("txid", b.txid.ToString());
         result.push_back(obj);
     }
@@ -863,6 +891,7 @@ static const CRPCCommand commands[] =
 
     /* BitNames */
     { "BitNames",          "listbitnames",                  &listbitnames,                  {}},
+    { "BitNames",          "listbitnamereservations",       &listbitnamereservations,       {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

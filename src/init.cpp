@@ -259,6 +259,7 @@ void Shutdown()
         pblocktree.reset();
         psidechaintree.reset();
         pbitnametree.reset();
+        pbitnamereservationtree.reset();
     }
 #ifdef ENABLE_WALLET
     StopWallets();
@@ -1414,6 +1415,10 @@ bool AppInitMain()
     if (nBitNameDBCache > (1 << 21))
         nBitNameDBCache = (1 << 21);
     nTotalCache -= nBitNameDBCache;
+    int64_t nBitNameReservationDBCache = nTotalCache / 8;
+    if (nBitNameReservationDBCache > (1 << 21))
+        nBitNameReservationDBCache = (1 << 21);
+    nTotalCache -= nBitNameReservationDBCache;
     int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
     nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20); // cap total coins db cache
     nTotalCache -= nCoinDBCache;
@@ -1444,6 +1449,8 @@ bool AppInitMain()
                 pblocktree.reset(new CBlockTreeDB(nBlockTreeDBCache, false, fReset));
                 psidechaintree.reset(new CSidechainTreeDB(nSidechainTreeDBCache, false, fReset));
                 pbitnametree.reset(new BitNameDB(nBitNameDBCache, false, fReset));
+                pbitnamereservationtree.reset(new BitNameReservationDB(nBitNameReservationDBCache, false, fReset));
+
 
                 if (fReset) {
                     pblocktree->WriteReindexing(true);
