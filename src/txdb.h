@@ -17,6 +17,7 @@
 
 class BitNameObj;
 class BitName;
+class BitNameReservation;
 class CBlockIndex;
 class CCoinsViewDBCursor;
 class SidechainObj;
@@ -158,6 +159,22 @@ public:
     std::vector<SidechainDeposit> GetDeposits(const uint8_t & /* nSidechain */);
 };
 
+/** Access to the BitName Reservation database (blocks/BitNameReservations/) */
+class BitNameReservationDB : public CDBWrapper
+{
+public:
+    BitNameReservationDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+    bool WriteBitNameReservations(const std::vector<BitNameReservation>& vBitNameReservation);
+
+    std::vector<BitNameReservation> GetBitNameReservations();
+
+    bool GetLastReservationID(uint32_t& nID);
+    bool WriteLastReservationID(const uint32_t nID);
+    bool GetBitNameReservation(const uint32_t nID, BitNameReservation& bitNameReservation);
+
+    bool RemoveReservation(const uint32_t nID);
+};
+
 /** Access to the BitName database (blocks/BitNames/) */
 class BitNameDB : public CDBWrapper
 {
@@ -167,12 +184,13 @@ public:
 
     std::vector<BitName> GetBitNames();
 
-    bool GetLastAssetID(uint32_t& nID);
-    bool WriteLastAssetID(const uint32_t nID);
+    bool GetLastBitNameID(uint32_t& nID);
+    bool WriteLastBitNameID(const uint32_t nID);
     bool GetBitName(const uint32_t nID, BitName& bitname);
 
-    bool RemoveAsset(const uint32_t nID);
+    bool RemoveBitName(const uint32_t nID);
 };
+
 
 
 #endif // BITCOIN_TXDB_H

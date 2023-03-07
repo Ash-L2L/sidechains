@@ -361,7 +361,7 @@ std::unique_ptr<CCoinsViewDB> pcoinsdbview;
 std::unique_ptr<CCoinsViewCache> pcoinsTip;
 std::unique_ptr<CBlockTreeDB> pblocktree;
 std::unique_ptr<CSidechainTreeDB> psidechaintree;
-std::unique_ptr<BitNameDB> passettree;
+std::unique_ptr<BitNameDB> pbitnametree;
 
 enum FlushStateMode {
     FLUSH_STATE_NONE,
@@ -1712,13 +1712,13 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             // Undo BitName creation & revert asset ID #
             uint32_t nIDLast = 0;
-            passettree->GetLastAssetID(nIDLast);
-            if (!passettree->WriteLastAssetID(nIDLast - 1)) {
-                error("DisconnectBlock(): Failed to undo BitNameDB asset ID #!");
+            pbitnametree->GetLastBitNameID(nIDLast);
+            if (!pbitnametree->WriteLastBitNameID(nIDLast - 1)) {
+                error("DisconnectBlock(): Failed to undo BitNameDB BitName ID #!");
                 return DISCONNECT_FAILED;
             }
-            if (!passettree->RemoveAsset(nIDLast)) {
-                error("DisconnectBlock(): Failed to remove BitNameDB asset!");
+            if (!pbitnametree->RemoveBitName(nIDLast)) {
+                error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
                 return DISCONNECT_FAILED;
             }
         }
@@ -2326,7 +2326,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             }
 
             uint32_t nIDLast = 0;
-            passettree->GetLastAssetID(nIDLast);
+            pbitnametree->GetLastBitNameID(nIDLast);
 
             BitName bitname;
             bitname.nID = nIDLast + 1;
@@ -2336,7 +2336,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             vBitName.push_back(bitname);
 
             // Update latest BitName ID #
-            if (!fJustCheck && !passettree->WriteLastAssetID(bitname.nID))
+            if (!fJustCheck && !pbitnametree->WriteLastBitNameID(bitname.nID))
                 return error("%s: Failed to update last BitName ID #!\n", __func__);
 
             // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
@@ -2666,7 +2666,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
     // Write asset objects to db
     if (vBitName.size()) {
-        if (!passettree->WriteBitNames(vBitName))
+        if (!pbitnametree->WriteBitNames(vBitName))
             return state.Error("Failed to write BitName index!");
     }
 

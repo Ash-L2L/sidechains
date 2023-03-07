@@ -194,7 +194,7 @@ struct CMutableTransaction;
  *   - CTxWitness wit;
  * - uint32_t nLockTime
  *
- * Create BitName version 10 tx:
+ * Create/Reserve BitName version 10 tx:
  * - int32_t nVersion
  * - unsigned char dummy = 0x00
  * - unsigned char flags (!= 0)

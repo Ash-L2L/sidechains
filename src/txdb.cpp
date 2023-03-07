@@ -34,8 +34,11 @@ static const char DB_LAST_BLOCK = 'l';
 static const char DB_LAST_SIDECHAIN_DEPOSIT = 'x';
 static const char DB_LAST_SIDECHAIN_WITHDRAWAL_BUNDLE = 'w';
 
-static const char DB_ASSET = 'A';
-static const char DB_ASSET_LAST_ID = 'I';
+static const char DB_BITNAME = 'A';
+static const char DB_BITNAME_LAST_ID = 'I';
+
+static const char DB_BITNAME_RESERVATION = 'Q';
+static const char DB_BITNAME_RESERVATION_LAST_ID = 'V';
 
 namespace {
 
@@ -590,7 +593,7 @@ bool BitNameDB::WriteBitNames(const std::vector<BitName>& vBitName)
 {
     CDBBatch batch(*this);
     for (const BitName& bitname : vBitName) {
-        std::pair<char, uint32_t> key = std::make_pair(DB_ASSET, bitname.nID);
+        std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME, bitname.nID);
         batch.Write(key, bitname);
     }
     return WriteBatch(batch, true);
@@ -599,7 +602,7 @@ bool BitNameDB::WriteBitNames(const std::vector<BitName>& vBitName)
 std::vector<BitName> BitNameDB::GetBitNames()
 {
     std::ostringstream ss;
-    ::Serialize(ss, std::make_pair(DB_ASSET, 0));
+    ::Serialize(ss, std::make_pair(DB_BITNAME, 0));
 
     std::vector<BitName> vBitName;
 
@@ -610,7 +613,7 @@ std::vector<BitName> BitNameDB::GetBitNames()
 
         std::pair<char, uint32_t> key;
         BitName bitname;
-        if (pcursor->GetKey(key) && key.first == DB_ASSET) {
+        if (pcursor->GetKey(key) && key.first == DB_BITNAME) {
             if (pcursor->GetValue(bitname))
                 vBitName.push_back(bitname);
         }
@@ -620,29 +623,91 @@ std::vector<BitName> BitNameDB::GetBitNames()
     return vBitName;
 }
 
-bool BitNameDB::GetLastAssetID(uint32_t& nID)
+bool BitNameDB::GetLastBitNameID(uint32_t& nID)
 {
     // Look up the last asset ID (in chronological order)
-    if (!Read(DB_ASSET_LAST_ID, nID))
+    if (!Read(DB_BITNAME_LAST_ID, nID))
         return false;
 
     return true;
 }
 
-bool BitNameDB::WriteLastAssetID(const uint32_t nID)
+bool BitNameDB::WriteLastBitNameID(const uint32_t nID)
 {
-    return Write(DB_ASSET_LAST_ID, nID);
+    return Write(DB_BITNAME_LAST_ID, nID);
 }
 
-bool BitNameDB::RemoveAsset(const uint32_t nID)
+bool BitNameDB::RemoveBitName(const uint32_t nID)
 {
-    std::pair<char, uint32_t> key = std::make_pair(DB_ASSET, nID);
+    std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME, nID);
     return Erase(key);
 }
 
 bool BitNameDB::GetBitName(const uint32_t nID, BitName& bitname)
 {
-    return Read(std::make_pair(DB_ASSET, nID), bitname);
+    return Read(std::make_pair(DB_BITNAME, nID), bitname);
+}
+
+BitNameReservationDB::BitNameReservationDB(size_t nCacheSize, bool fMemory, bool fWipe)
+    : CDBWrapper(GetDataDir() / "blocks" / "BitNameReservations", nCacheSize, fMemory, fWipe) { }
+
+bool BitNameReservationDB::WriteBitNameReservations(const std::vector<BitNameReservation>& vBitNameReservation)
+{
+    CDBBatch batch(*this);
+    for (const BitNameReservation& bitNameReservation : vBitNameReservation) {
+        std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME_RESERVATION, bitNameReservation.nID);
+        batch.Write(key, bitNameReservation);
+    }
+    return WriteBatch(batch, true);
+}
+
+std::vector<BitNameReservation> BitNameReservationDB::GetBitNameReservations()
+{
+    std::ostringstream ss;
+    ::Serialize(ss, std::make_pair(DB_BITNAME_RESERVATION, 0));
+
+    std::vector<BitNameReservation> vBitNameReservation;
+
+    std::unique_ptr<CDBIterator> pcursor(NewIterator());
+    pcursor->Seek(ss.str());
+    while (pcursor->Valid()) {
+        boost::this_thread::interruption_point();
+
+        std::pair<char, uint32_t> key;
+        BitNameReservation bitNameReservation;
+        if (pcursor->GetKey(key) && key.first == DB_BITNAME_RESERVATION) {
+            if (pcursor->GetValue(bitNameReservation))
+                vBitNameReservation.push_back(bitNameReservation);
+        }
+
+        pcursor->Next();
+    }
+    return vBitNameReservation;
+}
+
+bool BitNameReservationDB::GetLastReservationID(uint32_t& nID)
+{
+    // Look up the last reservation ID (in chronological order)
+    if (!Read(DB_BITNAME_RESERVATION_LAST_ID, nID))
+        return false;
+
+    return true;
+}
+
+bool BitNameReservationDB::WriteLastReservationID(const uint32_t nID)
+{
+    return Write(DB_BITNAME_RESERVATION_LAST_ID, nID);
+}
+
+bool BitNameReservationDB::RemoveReservation(const uint32_t nID)
+{
+    std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME_RESERVATION, nID);
+    return Erase(key);
+}
+
+bool BitNameReservationDB::GetBitNameReservation(const uint32_t nID, BitNameReservation& bitNameReservation)
+{
+    return Read(std::make_pair(DB_BITNAME_RESERVATION, nID), bitNameReservation);
 }
 
 namespace {

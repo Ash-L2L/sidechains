@@ -258,7 +258,7 @@ void Shutdown()
         pcoinsdbview.reset();
         pblocktree.reset();
         psidechaintree.reset();
-        passettree.reset();
+        pbitnametree.reset();
     }
 #ifdef ENABLE_WALLET
     StopWallets();
@@ -1443,7 +1443,7 @@ bool AppInitMain()
                 pblocktree.reset();
                 pblocktree.reset(new CBlockTreeDB(nBlockTreeDBCache, false, fReset));
                 psidechaintree.reset(new CSidechainTreeDB(nSidechainTreeDBCache, false, fReset));
-                passettree.reset(new BitNameDB(nBitNameDBCache, false, fReset));
+                pbitnametree.reset(new BitNameDB(nBitNameDBCache, false, fReset));
 
                 if (fReset) {
                     pblocktree->WriteReindexing(true);

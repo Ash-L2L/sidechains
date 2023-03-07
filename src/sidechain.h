@@ -109,7 +109,7 @@ struct SidechainObj {
 
 struct BitNameObj {
     // FIXME: what does this do?
-    char assetop;
+    char bitNameOp;
 
     BitNameObj(void) { }
     virtual ~BitNameObj(void) { }
@@ -131,6 +131,34 @@ struct BitName : public BitNameObj {
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nID);
         READWRITE(strName);
+        READWRITE(txid);
+    }
+};
+
+struct BitNameReservationObj {
+    // FIXME: what does this do?
+    char bitNameReservationOp;
+
+    BitNameReservationObj(void) { }
+    virtual ~BitNameReservationObj(void) { }
+
+    CScript GetScript(void) const;
+};
+
+/**
+ * BitName reservation
+ */
+struct BitNameReservation : public BitNameReservationObj {
+    uint32_t nID;
+    uint256 hashedName;
+    uint256 txid;
+
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nID);
+        READWRITE(hashedName);
         READWRITE(txid);
     }
 };

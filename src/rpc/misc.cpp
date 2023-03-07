@@ -818,7 +818,7 @@ UniValue listbitnames(const JSONRPCRequest& request)
             + HelpExampleRpc("listbitnames", "")
         );
 
-    std::vector<BitName> vBitname = passettree->GetBitNames();
+    std::vector<BitName> vBitname = pbitnametree->GetBitNames();
 
     UniValue result(UniValue::VARR);
     for (const BitName& b : vBitname) {
