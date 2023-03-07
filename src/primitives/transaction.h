@@ -203,7 +203,8 @@ struct CMutableTransaction;
  * - if (flags & 1):
  *   - CTxWitness wit;
  * - uint32_t nLockTime
- * - string name
+ * - uint256 payload (hashedName/salt)
+ * - string name (ignored for reservations)
  *
  */
 template<typename Stream, typename TxType>
@@ -244,6 +245,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     s >> tx.nLockTime;
 
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        s >> tx.payload;
         s >> tx.name;
     }
 }
@@ -279,6 +281,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        s << tx.payload;
         s << tx.name;
     }
 }
@@ -311,6 +314,7 @@ public:
 
     const unsigned char replayBytes = 0x3f;
 
+    const uint256 payload;
     const std::string name;
 
 private:
@@ -397,6 +401,7 @@ struct CMutableTransaction
     uint32_t nLockTime;
     unsigned char replayBytes = 0x3f;
 
+    uint256 payload;
     std::string name;
 
     CMutableTransaction();
