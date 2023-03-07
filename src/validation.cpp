@@ -1415,7 +1415,7 @@ void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState 
     }
 }
 
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, CAmount& amountAssetInOut, int& nControlNOut, uint32_t& nAssetIDOut, uint32_t nNewAssetIDIn)
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint32_t& nAssetIDOut, uint32_t nNewAssetIDIn)
 {
     amountAssetInOut = CAmount(0); // Track asset inputs
     nBitNameNOut = -1; // Track bitname outputs
@@ -2333,7 +2333,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             bitname.strName = tx.name;
             bitname.txid = tx.GetHash();
 
-            vBitName.push_back(asset);
+            vBitName.push_back(bitname);
 
             // Update latest BitName ID #
             if (!fJustCheck && !passettree->WriteLastAssetID(bitname.nID))
