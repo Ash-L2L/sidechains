@@ -593,7 +593,7 @@ bool BitNameDB::WriteBitNames(const std::vector<BitName>& vBitName)
 {
     CDBBatch batch(*this);
     for (const BitName& bitname : vBitName) {
-        std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME, bitname.nID);
+        std::pair<char, uint256> key = std::make_pair(DB_BITNAME, bitname.nID);
         batch.Write(key, bitname);
     }
     return WriteBatch(batch, true);
@@ -611,7 +611,7 @@ std::vector<BitName> BitNameDB::GetBitNames()
     while (pcursor->Valid()) {
         boost::this_thread::interruption_point();
 
-        std::pair<char, uint32_t> key;
+        std::pair<char, uint256> key;
         BitName bitname;
         if (pcursor->GetKey(key) && key.first == DB_BITNAME) {
             if (pcursor->GetValue(bitname))
@@ -623,7 +623,7 @@ std::vector<BitName> BitNameDB::GetBitNames()
     return vBitName;
 }
 
-bool BitNameDB::GetLastBitNameID(uint32_t& nID)
+bool BitNameDB::GetLastBitNameID(uint256& nID)
 {
     // Look up the last asset ID (in chronological order)
     if (!Read(DB_BITNAME_LAST_ID, nID))
@@ -632,18 +632,18 @@ bool BitNameDB::GetLastBitNameID(uint32_t& nID)
     return true;
 }
 
-bool BitNameDB::WriteLastBitNameID(const uint32_t nID)
+bool BitNameDB::WriteLastBitNameID(const uint256 nID)
 {
     return Write(DB_BITNAME_LAST_ID, nID);
 }
 
-bool BitNameDB::RemoveBitName(const uint32_t nID)
+bool BitNameDB::RemoveBitName(const uint256 nID)
 {
-    std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME, nID);
+    std::pair<char, uint256> key = std::make_pair(DB_BITNAME, nID);
     return Erase(key);
 }
 
-bool BitNameDB::GetBitName(const uint32_t nID, BitName& bitname)
+bool BitNameDB::GetBitName(const uint256 nID, BitName& bitname)
 {
     return Read(std::make_pair(DB_BITNAME, nID), bitname);
 }
@@ -655,7 +655,7 @@ bool BitNameReservationDB::WriteBitNameReservations(const std::vector<BitNameRes
 {
     CDBBatch batch(*this);
     for (const BitNameReservation& bitNameReservation : vBitNameReservation) {
-        std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME_RESERVATION, bitNameReservation.nID);
+        std::pair<char, uint256> key = std::make_pair(DB_BITNAME_RESERVATION, bitNameReservation.nID);
         batch.Write(key, bitNameReservation);
     }
     return WriteBatch(batch, true);
@@ -673,7 +673,7 @@ std::vector<BitNameReservation> BitNameReservationDB::GetBitNameReservations()
     while (pcursor->Valid()) {
         boost::this_thread::interruption_point();
 
-        std::pair<char, uint32_t> key;
+        std::pair<char, uint256> key;
         BitNameReservation bitNameReservation;
         if (pcursor->GetKey(key) && key.first == DB_BITNAME_RESERVATION) {
             if (pcursor->GetValue(bitNameReservation))
@@ -685,7 +685,7 @@ std::vector<BitNameReservation> BitNameReservationDB::GetBitNameReservations()
     return vBitNameReservation;
 }
 
-bool BitNameReservationDB::GetLastReservationID(uint32_t& nID)
+bool BitNameReservationDB::GetLastReservationID(uint256& nID)
 {
     // Look up the last reservation ID (in chronological order)
     if (!Read(DB_BITNAME_RESERVATION_LAST_ID, nID))
@@ -694,18 +694,18 @@ bool BitNameReservationDB::GetLastReservationID(uint32_t& nID)
     return true;
 }
 
-bool BitNameReservationDB::WriteLastReservationID(const uint32_t nID)
+bool BitNameReservationDB::WriteLastReservationID(const uint256 nID)
 {
     return Write(DB_BITNAME_RESERVATION_LAST_ID, nID);
 }
 
-bool BitNameReservationDB::RemoveReservation(const uint32_t nID)
+bool BitNameReservationDB::RemoveReservation(const uint256 nID)
 {
-    std::pair<char, uint32_t> key = std::make_pair(DB_BITNAME_RESERVATION, nID);
+    std::pair<char, uint256> key = std::make_pair(DB_BITNAME_RESERVATION, nID);
     return Erase(key);
 }
 
-bool BitNameReservationDB::GetBitNameReservation(const uint32_t nID, BitNameReservation& bitNameReservation)
+bool BitNameReservationDB::GetBitNameReservation(const uint256 nID, BitNameReservation& bitNameReservation)
 {
     return Read(std::make_pair(DB_BITNAME_RESERVATION, nID), bitNameReservation);
 }
@@ -808,7 +808,7 @@ bool CCoinsViewDB::Upgrade() {
             COutPoint outpoint(key.second, 0);
             for (size_t i = 0; i < old_coins.vout.size(); ++i) {
                 if (!old_coins.vout[i].IsNull() && !old_coins.vout[i].scriptPubKey.IsUnspendable()) {
-                    Coin newcoin(std::move(old_coins.vout[i]), old_coins.nHeight, old_coins.fCoinBase, false, false, 0);
+                    Coin newcoin(std::move(old_coins.vout[i]), old_coins.nHeight, old_coins.fCoinBase, false, false, uint256());
                     outpoint.n = i;
                     CoinEntry entry(&outpoint);
                     batch.Write(entry, newcoin);

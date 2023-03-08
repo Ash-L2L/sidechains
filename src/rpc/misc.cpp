@@ -823,7 +823,7 @@ UniValue listbitnames(const JSONRPCRequest& request)
     UniValue result(UniValue::VARR);
     for (const BitName& b : vBitName) {
         UniValue obj(UniValue::VOBJ);
-        obj.pushKV("id", (uint64_t)b.nID);
+        obj.pushKV("id", b.nID.ToString());
         obj.pushKV("name", b.strName);
         obj.pushKV("txid", b.txid.ToString());
         result.push_back(obj);
@@ -851,7 +851,7 @@ UniValue listbitnamereservations(const JSONRPCRequest& request)
     UniValue result(UniValue::VARR);
     for (const BitNameReservation& b : vBitnameReservation) {
         UniValue obj(UniValue::VOBJ);
-        obj.pushKV("id", (uint64_t)b.nID);
+        obj.pushKV("id", b.nID.ToString());
         obj.pushKV("hashedName", b.hashedName.ToString());
         obj.pushKV("txid", b.txid.ToString());
         result.push_back(obj);

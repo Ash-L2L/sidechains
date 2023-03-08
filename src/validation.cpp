@@ -1416,11 +1416,11 @@ void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState 
     }
 }
 
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint32_t& nAssetIDOut, uint32_t nNewAssetIDIn)
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint256& nAssetIDOut, uint256 nNewAssetIDIn)
 {
     amountAssetInOut = CAmount(0); // Track asset inputs
     nBitNameNOut = -1; // Track bitname outputs
-    nAssetIDOut = 0; // Track asset ID
+    nAssetIDOut = uint256(); // Track asset ID
     if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
         // mark inputs spent
@@ -1428,11 +1428,11 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             txundo.vprevout.emplace_back();
             bool fBitNameReservation = false;
             bool fBitName = false;
-            uint32_t nAssetID = 0;
+            uint256 nAssetID = uint256();
             bool is_spent = inputs.SpendCoin(tx.vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &txundo.vprevout.back());
 
             // Update nAssetIDOut if SpendCoin returns a non-zero asset ID
-            if (nAssetID)
+            if (nAssetID != uint256())
                 nAssetIDOut = nAssetID;
 
             assert(is_spent);
@@ -1712,9 +1712,11 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         // Undo BitNameDB updates
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             // Undo BitName creation & revert asset ID #
-            uint32_t nIDLast = 0;
+            uint256 nIDLast = uint256();
             pbitnametree->GetLastBitNameID(nIDLast);
-            if (!pbitnametree->WriteLastBitNameID(nIDLast - 1)) {
+            arith_uint256 nIDLast_pred = UintToArith256(nIDLast);
+            nIDLast_pred--;
+            if (!pbitnametree->WriteLastBitNameID(ArithToUint256(nIDLast_pred))) {
                 error("DisconnectBlock(): Failed to undo BitNameDB BitName ID #!");
                 return DISCONNECT_FAILED;
             }
@@ -1735,7 +1737,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                 Coin coin;
                 bool fBitNameReservation = false;
                 bool fBitName = false;
-                uint32_t nAssetID = 0;
+                uint256 nAssetID = uint256();
                 bool is_spent = view.SpendCoin(out, fBitNameReservation, fBitName, nAssetID, &coin);
                 if (!is_spent || tx.vout[o] != coin.out || pindex->nHeight != coin.nHeight || is_coinbase != coin.fCoinBase) {
                     fClean = false; // transaction output mismatch
@@ -2319,18 +2321,20 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
 
         // New asset created - set asset ID # and update BitNameDB
-        uint32_t nNewAssetID = 0;
+        uint256 nNewAssetID = uint256();
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             if (tx.vout.size() < 1) {
                 return state.DoS(100, error("ConnectBlock(): Invalid BitName creation - vout too small"),
                                  REJECT_INVALID, "bad-asset-vout-small");
             }
 
-            uint32_t nIDLast = 0;
+            uint256 nIDLast = uint256();
             pbitnametree->GetLastBitNameID(nIDLast);
-
+            
             BitName bitname;
-            bitname.nID = nIDLast + 1;
+            arith_uint256 nIDLast_tmp = UintToArith256(nIDLast);
+            nIDLast_tmp++;
+            bitname.nID = ArithToUint256(nIDLast_tmp);
             bitname.strName = tx.name;
             bitname.txid = tx.GetHash();
 
@@ -2351,13 +2355,13 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
         CAmount amountAssetIn = CAmount(0);
         int nBitNameN = -1;
-        uint32_t nAssetID = 0;
+        uint256 nAssetID = uint256();
         UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, amountAssetIn, nBitNameN, nAssetID, nNewAssetID);
 
         BitNameTransactionData data;
         data.amountAssetIn = amountAssetIn;
         data.nBitNameN = nBitNameN;
-        data.nAssetID = nNewAssetID ? nNewAssetID : nAssetID;
+        data.nAssetID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
         data.txid = tx.GetHash();
         if (connectTrace && (amountAssetIn > 0 || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION))
             connectTrace->SetBitNameData(tx.GetHash(), data);
@@ -4862,22 +4866,24 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
     CAmount amountAssetIn = CAmount(0);
     int nBitNameN = -1;
     for (const CTransactionRef& tx : block.vtx) {
-        if (!tx->IsCoinBase()) {
-            for (size_t x = 0; x < tx->vin.size(); x++) {
-                bool fBitNameReservation = false;
-                bool fBitName = false;
-                uint32_t nAssetID = 0;
-                Coin coin;
-                inputs.SpendCoin(tx->vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &coin);
+        if (tx->IsCoinBase())
+            continue;
+        
+        uint256 nAssetID = uint256();
+        
+        for (size_t x = 0; x < tx->vin.size(); x++) {
+            bool fBitNameReservation = false;
+            bool fBitName = false;
+            Coin coin;
+            inputs.SpendCoin(tx->vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &coin);
 
-                if (fBitNameReservation)
-                    amountAssetIn += coin.out.nValue;
-                if (fBitName)
-                    nBitNameN = x;
-            }
+            if (fBitNameReservation)
+                amountAssetIn += coin.out.nValue;
+            if (fBitName)
+                nBitNameN = x;
         }
         // Pass check = true as every addition may be an overwrite.
-        AddCoins(inputs, *tx, pindex->nHeight, amountAssetIn, nBitNameN, true);
+        AddCoins(inputs, *tx, pindex->nHeight, nAssetID, amountAssetIn, nBitNameN, uint256(), true);
     }
     return true;
 }

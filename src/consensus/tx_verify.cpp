@@ -169,10 +169,16 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
 
 
     bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+
+    // Create BitName transactions must have at least 1 output
+    if (fBitName && tx.vout.size() < 1)
+        return state.DoS(10, false, REJECT_INVALID, "bad-txns-create-bitname-vout-size");
+
+    // Check for negative or overflow output values
+    CAmount nValueOut = 0;
     std::vector<CTxOut>::const_iterator it;
     it = tx.vout.begin();
-    // FIXME: when is tx vout size 0?
-    if (fBitName && tx.vout.size() > 1) {
+    if (fBitName) {
         // The first output from a create bitname tx must have a value of 1
         if (it->nValue > 1)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
@@ -180,9 +186,6 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-negative");
         it++;
     }
-
-    // Check for negative or overflow output values
-    CAmount nValueOut = 0;
     for (; it != tx.vout.end(); it++)
     {
         if (it->nValue < 0)
@@ -242,6 +245,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         }
     }
 
+    uint256 nAssetIDFound = uint256();
     CAmount nValueIn = 0;
     for (unsigned int i = 0; i < tx.vin.size(); ++i) {
         const COutPoint &prevout = tx.vin[i].prevout;
@@ -260,6 +264,12 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn)) {
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
         }
+
+        if ((coin.nAssetID != uint256()) && (nAssetIDFound != uint256()) && coin.nAssetID != nAssetIDFound)
+            return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-mixed-assets");
+
+        nAssetIDFound = coin.nAssetID;
+
     }
 
     const CAmount value_out = tx.GetValueOut();

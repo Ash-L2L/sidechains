@@ -57,7 +57,7 @@ struct BitNameTransactionData {
     uint256 txid;
     CAmount amountAssetIn;
     int nBitNameN;
-    uint32_t nAssetID;
+    uint256 nAssetID;
 };
 
 /** Default for -whitelistrelay. */
@@ -348,7 +348,7 @@ int VersionBitsTipStateSinceHeight(const Consensus::Params& params, Consensus::D
 
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint32_t& nAssetIDOut, const uint32_t nNewAssetIDIn = 0);
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint256& nAssetIDOut, const uint256 nNewAssetIDIn = uint256());
 
 /** Transaction validation functions */
 

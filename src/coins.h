@@ -7,6 +7,7 @@
 #define BITCOIN_COINS_H
 
 #include <primitives/transaction.h>
+#include <arith_uint256.h>
 #include <compressor.h>
 #include <core_memusage.h>
 #include <hash.h>
@@ -46,11 +47,11 @@ public:
     //! Is this a BitName?
     bool fBitName;
 
-    uint32_t nAssetID;
+    uint256 nAssetID;
 
     //! construct a Coin from a CTxOut and height/coinbase information.
-    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint32_t nAssetIDIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
-    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint32_t nAssetIDIn) : out(outIn), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
+    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint256 nAssetIDIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
+    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint256 nAssetIDIn) : out(outIn), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
 
     void Clear() {
         out.SetNull();
@@ -58,11 +59,11 @@ public:
         nHeight = 0;
         fBitNameReservation = false;
         fBitName = false;
-        nAssetID = 0;
+        nAssetID = uint256();
     }
 
     //! empty constructor
-    Coin() : fCoinBase(false), nHeight(0), fBitNameReservation(false), fBitName(false), nAssetID(0) { }
+    Coin() : fCoinBase(false), nHeight(0), fBitNameReservation(false), fBitName(false), nAssetID(uint256()) { }
 
     bool IsCoinBase() const {
         return fCoinBase;
@@ -76,7 +77,7 @@ public:
         return fBitName;
     }
 
-    uint32_t GetAssetID() const {
+    uint256 GetAssetID() const {
         return nAssetID;
     }
 
@@ -290,7 +291,7 @@ public:
      * If no unspent output exists for the passed outpoint, this call
      * has no effect.
      */
-    bool SpendCoin(const COutPoint &outpoint, bool& fBitNameReservation, bool& fBitName, uint32_t& nAssetID, Coin* moveto = nullptr);
+    bool SpendCoin(const COutPoint &outpoint, bool& fBitNameReservation, bool& fBitName, uint256& nAssetID, Coin* moveto = nullptr);
 
     /**
      * Push the modifications applied to this cache to its base.
@@ -334,7 +335,7 @@ private:
 // an overwrite.
 // TODO: pass in a boolean to limit these possible overwrites to known
 // (pre-BIP34) cases.
-void AddCoins(CCoinsViewCache& cache, const CTransaction& tx, int nHeight, uint32_t nAssetID, const CAmount amountAssetIn, int nControlN = -1, uint32_t nNewAssetID = 0, bool check = false);
+void AddCoins(CCoinsViewCache& cache, const CTransaction& tx, int nHeight, uint256 nAssetID, const CAmount amountAssetIn, int nControlN = -1, uint256 nNewAssetID = uint256(), bool check = false);
 
 //! Utility function to find any unspent output with a given txid.
 // This function can be quite expensive because in the event of a transaction

@@ -168,11 +168,11 @@ public:
 
     std::vector<BitNameReservation> GetBitNameReservations();
 
-    bool GetLastReservationID(uint32_t& nID);
-    bool WriteLastReservationID(const uint32_t nID);
-    bool GetBitNameReservation(const uint32_t nID, BitNameReservation& bitNameReservation);
+    bool GetLastReservationID(uint256& nID);
+    bool WriteLastReservationID(const uint256 nID);
+    bool GetBitNameReservation(const uint256 nID, BitNameReservation& bitNameReservation);
 
-    bool RemoveReservation(const uint32_t nID);
+    bool RemoveReservation(const uint256 nID);
 };
 
 /** Access to the BitName database (blocks/BitNames/) */
@@ -184,11 +184,11 @@ public:
 
     std::vector<BitName> GetBitNames();
 
-    bool GetLastBitNameID(uint32_t& nID);
-    bool WriteLastBitNameID(const uint32_t nID);
-    bool GetBitName(const uint32_t nID, BitName& bitname);
+    bool GetLastBitNameID(uint256& nID);
+    bool WriteLastBitNameID(const uint256 nID);
+    bool GetBitName(const uint256 nID, BitName& bitname);
 
-    bool RemoveBitName(const uint32_t nID);
+    bool RemoveBitName(const uint256 nID);
 };
 
 

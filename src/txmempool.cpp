@@ -627,7 +627,7 @@ static void CheckInputsAndUpdateCoins(const CTransaction& tx, CCoinsViewCache& m
     assert(fCheckResult);
     CAmount amountAssetIn = CAmount(0);
     int nControlN = -1;
-    uint32_t nAssetID = 0;
+    uint256 nAssetID = uint256();
     CTxUndo undo;
     UpdateCoins(tx, mempoolDuplicate, undo, 1000000, amountAssetIn, nControlN, nAssetID);
 }
@@ -913,7 +913,7 @@ bool CCoinsViewMemPool::GetCoin(const COutPoint &outpoint, Coin &coin) const {
         if (outpoint.n < ptx->vout.size()) {
             // TODO setting fBitName info false / 0 here. It doesn't seem like any
             // callers will require that info.
-            coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, false, false, 0);
+            coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, false, false, uint256());
             return true;
         } else {
             return false;

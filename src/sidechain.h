@@ -121,7 +121,7 @@ struct BitNameObj {
  * BitName
  */
 struct BitName : public BitNameObj {
-    uint32_t nID;
+    uint256 nID;
     std::string strName;
     uint256 txid;
 
@@ -149,7 +149,7 @@ struct BitNameReservationObj {
  * BitName reservation
  */
 struct BitNameReservation : public BitNameReservationObj {
-    uint32_t nID;
+    uint256 nID;
     uint256 hashedName;
     uint256 txid;
 
