@@ -48,10 +48,13 @@ public:
     bool fBitName;
 
     uint256 nAssetID;
+    
+    // used only for BitName Reservations
+    uint256 commitment;
 
     //! construct a Coin from a CTxOut and height/coinbase information.
-    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint256 nAssetIDIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
-    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint256 nAssetIDIn) : out(outIn), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn) {}
+    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint256 nAssetIDIn, uint256 commitmentIn=uint256()) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn), commitment(commitmentIn) {}
+    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fBitNameReservationIn, bool fBitNameIn, uint256 nAssetIDIn, uint256 commitmentIn=uint256()) : out(outIn), fCoinBase(fCoinBaseIn), nHeight(nHeightIn), fBitNameReservation(fBitNameReservationIn), fBitName(fBitNameIn), nAssetID(nAssetIDIn), commitment(commitmentIn) {}
 
     void Clear() {
         out.SetNull();
@@ -60,6 +63,7 @@ public:
         fBitNameReservation = false;
         fBitName = false;
         nAssetID = uint256();
+        commitment = uint256();
     }
 
     //! empty constructor
@@ -81,6 +85,10 @@ public:
         return nAssetID;
     }
 
+    uint256 GetCommitment() const {
+        return commitment;
+    }
+
     template<typename Stream>
     void Serialize(Stream &s) const {
         assert(!IsSpent());
@@ -90,6 +98,7 @@ public:
         ::Serialize(s, fBitNameReservation);
         ::Serialize(s, fBitName);
         ::Serialize(s, nAssetID);
+        ::Serialize(s, commitment);
     }
 
     template<typename Stream>
@@ -102,6 +111,7 @@ public:
         ::Unserialize(s, fBitNameReservation);
         ::Unserialize(s, fBitName);
         ::Unserialize(s, nAssetID);
+        ::Unserialize(s, commitment);
     }
 
     bool IsSpent() const {

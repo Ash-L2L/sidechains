@@ -5,6 +5,7 @@
 #include <consensus/tx_verify.h>
 
 #include <consensus/consensus.h>
+#include <hash.h>
 #include <primitives/transaction.h>
 #include <script/interpreter.h>
 #include <consensus/validation.h>
@@ -240,8 +241,21 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
         if (!tx.name.empty()) {
             const COutPoint& lastOutpoint = tx.vin.back().prevout;
             const Coin& lastInputCoin = inputs.AccessCoin(lastOutpoint);
-            
-            // FIXME/TODO
+            // last input coin must be a reservation
+            if (!lastInputCoin.fBitNameReservation)
+                return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-missing-reservation");
+            uint256 commitment = lastInputCoin.commitment;
+            std::string name = tx.name;
+            uint256 sok = tx.payload; // statement of knowledge, aka salt
+            // compute the hash of name + sok
+            uint256 hash_result;
+            const unsigned char* name_ptr =
+                reinterpret_cast<const unsigned char*>(name.c_str());
+            CHash256().Write(name_ptr, name.size())
+                      .Write(sok.begin(), sok.size())
+                      .Finalize((unsigned char*) &hash_result);
+            if (commitment != hash_result)
+                return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-wrong-commitment");
         }
     }
 
