@@ -123,6 +123,7 @@ struct BitNameObj {
 struct BitName : public BitNameObj {
     uint256 nID;
     std::string strName;
+    uint256 commitment;
     uint256 txid;
 
     ADD_SERIALIZE_METHODS
@@ -131,6 +132,7 @@ struct BitName : public BitNameObj {
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nID);
         READWRITE(strName);
+        READWRITE(commitment);
         READWRITE(txid);
     }
 };

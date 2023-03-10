@@ -234,7 +234,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
     // in a create bitname tx, if the 'name' field is set (registration), then
     // there must exist a bitname reservation input at the last index of the
     // inputs, for which the reserved hashedName must be equal to the hash of
-    // txinputshash+payload+name, where the txinputshash is tha hash of tx
+    // txinputshash+commitment+name, where the txinputshash is tha hash of tx
     // inputs for the tx that created the bitname reservation.
     bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
     if (fBitName) {
@@ -246,7 +246,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-missing-reservation");
             uint256 commitment = lastInputCoin.commitment;
             std::string name = tx.name;
-            uint256 sok = tx.payload; // statement of knowledge, aka salt
+            uint256 sok = tx.sok; // statement of knowledge, aka salt
             // compute the hash of name + sok
             uint256 hash_result;
             const unsigned char* name_ptr =

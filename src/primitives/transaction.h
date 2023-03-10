@@ -203,8 +203,9 @@ struct CMutableTransaction;
  * - if (flags & 1):
  *   - CTxWitness wit;
  * - uint32_t nLockTime
- * - uint256 payload (hashedName/salt)
+ * - uint256 commitment
  * - string name (ignored for reservations)
+ * - uint256 sok (only used for registrations)
  *
  */
 template<typename Stream, typename TxType>
@@ -245,8 +246,9 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     s >> tx.nLockTime;
 
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-        s >> tx.payload;
+        s >> tx.commitment;
         s >> tx.name;
+        s >> tx.sok;
     }
 }
 
@@ -281,8 +283,9 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-        s << tx.payload;
+        s << tx.commitment;
         s << tx.name;
+        s << tx.sok;
     }
 }
 
@@ -314,8 +317,11 @@ public:
 
     const unsigned char replayBytes = 0x3f;
 
-    const uint256 payload;
+    const uint256 commitment;
     const std::string name;
+    // statement of knowledge for registering BitName
+    const uint256 sok;
+    // FIXME: add ipv4/6 addrs
 
 private:
     /** Memory only. */
@@ -401,8 +407,9 @@ struct CMutableTransaction
     uint32_t nLockTime;
     unsigned char replayBytes = 0x3f;
 
-    uint256 payload;
+    uint256 commitment;
     std::string name;
+    uint256 sok;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

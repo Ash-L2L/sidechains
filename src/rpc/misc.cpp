@@ -825,6 +825,7 @@ UniValue listbitnames(const JSONRPCRequest& request)
         UniValue obj(UniValue::VOBJ);
         obj.pushKV("id", b.nID.ToString());
         obj.pushKV("name", b.strName);
+        obj.pushKV("commitment", b.commitment.ToString());
         obj.pushKV("txid", b.txid.ToString());
         result.push_back(obj);
     }

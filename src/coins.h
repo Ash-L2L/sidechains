@@ -49,7 +49,8 @@ public:
 
     uint256 nAssetID;
     
-    // used only for BitName Reservations
+    // For Bitname reservations, this is a commitment to a BitName
+    // For Bitname registrations, this is a commitment to external data
     uint256 commitment;
 
     //! construct a Coin from a CTxOut and height/coinbase information.

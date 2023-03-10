@@ -2358,6 +2358,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 nBitNameIDLast_tmp++;
                 bitname.nID = ArithToUint256(nBitNameIDLast_tmp);
                 bitname.strName = tx.name;
+                bitname.commitment = tx.commitment;
                 bitname.txid = tx.GetHash();
 
                 vBitName.push_back(bitname);
@@ -2377,7 +2378,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 arith_uint256 nBitNameReservationIDLast_tmp = UintToArith256(nBitNameReservationIDLast);
                 nBitNameReservationIDLast_tmp++;
                 bitNameReservation.nID = ArithToUint256(nBitNameReservationIDLast_tmp);
-                bitNameReservation.hashedName = tx.payload;
+                bitNameReservation.hashedName = tx.commitment;
                 bitNameReservation.txid = tx.GetHash();
 
                 vBitNameReservation.push_back(bitNameReservation);
