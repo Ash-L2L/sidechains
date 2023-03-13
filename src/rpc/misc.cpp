@@ -827,6 +827,12 @@ UniValue listbitnames(const JSONRPCRequest& request)
         obj.pushKV("name", b.strName);
         obj.pushKV("commitment", b.commitment.ToString());
         obj.pushKV("txid", b.txid.ToString());
+        if (b.fIn4) {
+            struct in_addr in4;
+            in4.s_addr = b.in4;
+
+            obj.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
+        }
         result.push_back(obj);
     }
 

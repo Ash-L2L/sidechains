@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <amount.h>
+#include <netaddress.h>
 #include <script/script.h>
 #include <serialize.h>
 #include <uint256.h>
@@ -206,6 +207,8 @@ struct CMutableTransaction;
  * - uint256 commitment
  * - string name (ignored for reservations)
  * - uint256 sok (only used for registrations)
+ * - bool fIn4 (only used for registrations, to register an ipv4 addr)
+ * - in_addr in4 (only used for registrations)
  *
  */
 template<typename Stream, typename TxType>
@@ -249,6 +252,10 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         s >> tx.commitment;
         s >> tx.name;
         s >> tx.sok;
+        s >> tx.fIn4;
+        uint32_t in4;
+        ::Unserialize(s, in4);
+        tx.in4.s_addr = htonl(in4);
     }
 }
 
@@ -286,6 +293,8 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << tx.commitment;
         s << tx.name;
         s << tx.sok;
+        s << tx.fIn4;
+        s << ntohl(tx.in4.s_addr);
     }
 }
 
@@ -321,7 +330,8 @@ public:
     const std::string name;
     // statement of knowledge for registering BitName
     const uint256 sok;
-    // FIXME: add ipv4/6 addrs
+    const bool fIn4;
+    const in_addr in4;
 
 private:
     /** Memory only. */
@@ -410,6 +420,8 @@ struct CMutableTransaction
     uint256 commitment;
     std::string name;
     uint256 sok;
+    bool fIn4;
+    in_addr in4;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

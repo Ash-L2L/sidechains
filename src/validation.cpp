@@ -2359,6 +2359,10 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 bitname.nID = ArithToUint256(nBitNameIDLast_tmp);
                 bitname.strName = tx.name;
                 bitname.commitment = tx.commitment;
+                bitname.fIn4 = tx.fIn4;
+                if (bitname.fIn4) {
+                    bitname.in4 = tx.in4.s_addr;
+                }
                 bitname.txid = tx.GetHash();
 
                 vBitName.push_back(bitname);

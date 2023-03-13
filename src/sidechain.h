@@ -124,6 +124,9 @@ struct BitName : public BitNameObj {
     uint256 nID;
     std::string strName;
     uint256 commitment;
+    bool fIn4; // is in4 set?
+    // FIXME: use in_addr instead
+    in_addr_t in4;
     uint256 txid;
 
     ADD_SERIALIZE_METHODS
@@ -133,6 +136,8 @@ struct BitName : public BitNameObj {
         READWRITE(nID);
         READWRITE(strName);
         READWRITE(commitment);
+        READWRITE(fIn4);
+        READWRITE(in4);
         READWRITE(txid);
     }
 };
