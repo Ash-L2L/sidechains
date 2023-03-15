@@ -2332,74 +2332,27 @@ void CWallet::AvailableBitNameReservations(std::vector<COutput> &vCoins, uint256
         bool safeTx = wtx->IsTrusted();
         if (!safeTx)
             continue;
+        
+        // in a reservation, the `name` tx field is not set, and the
+        // only inputs are Bitcoins
+        if (!wtx->tx->name.empty())
+            continue;
+        // FIXME: check that the last input is Bitcoins
+        if (!wtx->tx->vin.empty()) {
+            //wtx->tx->vin.back()
+        }
+        
+        // Check if we have any reservation from the first output
+        if (wtx->tx->vout.size() < 1)
+            continue;
 
-        // FIXME: adapt for bitnames
-        if (wtx->amountAssetIn) {
-            // Need to find the asset outputs that belong to us,
-            // while adding up to the total amountassetin. Some of the outputs
-            // might not be ours.
-            CAmount amountAssetOut = CAmount(0);
-            for (unsigned int i = 0; i < wtx->tx->vout.size(); i++) {
-                if (amountAssetOut >= wtx->amountAssetIn)
-                    break;
-
-                amountAssetOut += wtx->tx->vout[i].nValue;
-
-                // Skip asset control outputs
-                if (wtx->nControlN == (int)i)
-                   continue;
-
-                if (IsLockedCoin(entry.first, i))
-                    continue;
-
-                if (IsSpent(wtxid, i))
-                    continue;
-
-                isminetype mine = IsMine(wtx->tx->vout[i]);
-
-                if (mine == ISMINE_NO) {
-                    continue;
-                }
-
+        // Do not return the controller output
+        if (!IsLockedCoin(entry.first, 0) && !IsSpent(wtxid, 0)) {
+            isminetype mine = IsMine(wtx->tx->vout[0]);
+            if (mine != ISMINE_NO) {
                 bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
                 bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
-
-                vCoins.push_back(COutput(wtx, i, nDepth, fSpendableIn, fSolvableIn, true));
-            }
-        }
-        else
-        if (wtx->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-            // in a reservation, the `name` tx field is not set, and the
-            // only inputs are Bitcoins
-            if (!wtx->tx->name.empty())
-                continue;
-            // FIXME: check that the last input is Bitcoins
-            if (!wtx->tx->vin.empty()) {
-                //wtx->tx->vin.back()
-            }
-            
-            // Check if we have any reservation from the first output
-            if (wtx->tx->vout.size() < 1)
-                continue;
-
-            // Do not return the controller output
-            /*
-            if (!IsLockedCoin(entry.first, 0) && !IsSpent(wtxid, 0)) {
-                isminetype mine = IsMine(wtx->tx->vout[0]);
-                if (mine != ISMINE_NO) {
-                    bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
-                    bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
-                    vCoins.push_back(COutput(wtx, 0, nDepth, fSpendableIn, fSolvableIn, true));
-                }
-            }
-            */
-            if  (!IsLockedCoin(entry.first, 1) && !IsSpent(wtxid, 1)) {
-                isminetype mine = IsMine(wtx->tx->vout[1]);
-                if (mine != ISMINE_NO) {
-                    bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
-                    bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
-                    vCoins.push_back(COutput(wtx, 1, nDepth, fSpendableIn, fSolvableIn, true));
-                }
+                vCoins.push_back(COutput(wtx, 0, nDepth, fSpendableIn, fSolvableIn, true));
             }
         }
     }
@@ -3371,14 +3324,184 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     walletTx.fTimeReceivedIsTxTime = true;
     walletTx.fFromMe = true;
     walletTx.BindWallet(this);
-
     walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
-
+    walletTx.strName = strName;
+    walletTx.sok = salt;
     walletTx.nControlN = 0;
 
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
-        strFail = "Failed to commit BitName creation transaction! Reject reason: " + FormatStateMessage(state) + "\n";
+        strFail = "Failed to commit BitName reservation transaction! Reject reason: " + FormatStateMessage(state) + "\n";
+        return false;
+    }
+    tx = walletTx.tx;
+
+    return true;
+}
+
+bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& sok, const uint256& commitment, const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable)
+{
+    strFail = "Unknown error!";
+
+    if (vpwallets.empty()) {
+        strFail = "No active wallet!\n";
+        return false;
+    }
+
+    CTxDestination dest = DecodeDestination(strDest);
+    if (!fImmutable && !IsValidDestination(dest)) {
+        strFail = "Invalid destination";
+        return false;
+    }
+
+    CMutableTransaction mtx;
+    mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
+
+    // BitName info
+    mtx.name = strName;
+    mtx.commitment = commitment;
+    mtx.sok = sok;
+    mtx.fIn4 = true;
+    mtx.in4 = in4;
+
+    // registration output
+    if (fImmutable)
+        mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
+    else
+        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
+
+    BlockUntilSyncedToCurrentChain();
+
+    LOCK2(cs_main, vpwallets[0]->cs_wallet);
+
+    // calculate expected reservation commitment
+    uint256 reservation_commitment;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Write(sok.begin(), sok.size())
+              .Finalize((unsigned char*) &reservation_commitment);
+
+    // Select coins to cover fee
+    std::vector<COutput> vCoins;
+    AvailableCoins(vCoins, true /* fOnlySafe */);
+    std::set<CInputCoin> setCoins;
+    CAmount nAmountRet = CAmount(0);
+    if (!SelectCoins(vCoins, nFee, setCoins, nAmountRet)) {
+        strFail = "Could not collect enough coins to cover fee!\n";
+        return false;
+    }
+
+    // Handle change if there is any
+    const CAmount nChange = nAmountRet - nFee;
+    CReserveKey reserveKey(vpwallets[0]);
+    if (nChange > 0) {
+        CScript scriptChange;
+
+        // Reserve a new key pair from key pool
+        CPubKey vchPubKey;
+        if (!reserveKey.GetReservedKey(vchPubKey))
+        {
+            strFail = "Keypool ran out, please call keypoolrefill first!\n";
+            return false;
+        }
+        scriptChange = GetScriptForDestination(vchPubKey.GetID());
+
+        CTxOut out(nChange, scriptChange);
+        if (!IsDust(out, ::dustRelayFee))
+            mtx.vout.push_back(out);
+    }
+
+    // Add Bitcoin inputs
+    for (const auto& coin : setCoins)
+        mtx.vin.push_back(CTxIn(coin.outpoint.hash, coin.outpoint.n, CScript()));
+
+    // Select a reservation to spend
+    COutput* reservation_ptr = nullptr;
+    std::vector<COutput> vBitNameReservation;
+    AvailableBitNameReservations(vBitNameReservation);
+    for (COutput& output : vBitNameReservation) {
+        if (output.tx->sok == reservation_commitment) {
+            reservation_ptr = &output;
+            break;
+        }
+    }
+    if (reservation_ptr == nullptr) {
+        strFail = "Could not find a bitname reservation with the correct commitment!\n";
+        return false;
+    }
+    COutput& reservation = *reservation_ptr;
+
+    // Add BitName reservation inputs
+    CInputCoin reservation_coin = CInputCoin(reservation.tx, reservation.i);
+    COutPoint reservation_outpoint = reservation_coin.outpoint;
+    mtx.vin.push_back(CTxIn(reservation_outpoint.hash, reservation_outpoint.n, CScript()));
+    setCoins.insert(reservation_coin);
+
+    // Dummy sign the transaction to calculate minimum fee
+    std::set<CInputCoin> setCoinsTemp = setCoins;
+    if (!DummySignTx(mtx, setCoinsTemp)) {
+        strFail = "Dummy signing transaction for required fee calculation failed!";
+        return false;
+    }
+
+    // Get transaction size with dummy signatures
+    unsigned int nBytes = GetVirtualTransactionSize(mtx);
+
+    // Calculate fee
+    CCoinControl coinControl;
+    FeeCalculation feeCalc;
+    CAmount nFeeNeeded = GetMinimumFee(nBytes, coinControl, ::mempool, ::feeEstimator, &feeCalc);
+
+    // Check that the fee is valid for relay
+    if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes)) {
+        strFail = "Transaction too large for fee policy";
+        return false;
+    }
+
+    // Check the user set fee
+    if (nFee < nFeeNeeded) {
+        strFail = "The fee you have set is too small!";
+        return false;
+    }
+
+    // Remove dummy signatures
+    for (auto& vin : mtx.vin) {
+        vin.scriptSig = CScript();
+        vin.scriptWitness.SetNull();
+    }
+
+    // Sign the inputs
+    const CTransaction txToSign = mtx;
+    int nIn = 0;
+    for (const auto& coin : setCoins) {
+        const CScript& scriptPubKey = coin.txout.scriptPubKey;
+        SignatureData sigdata;
+
+        if (!ProduceSignature(TransactionSignatureCreator(this, &txToSign, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata))
+        {
+            strFail = "Signing inputs failed!\n";
+            return false;
+        } else {
+            UpdateTransaction(mtx, nIn, sigdata);
+        }
+
+        nIn++;
+    }
+
+    // Broadcast transaction
+    CWalletTx walletTx;
+    walletTx.fTimeReceivedIsTxTime = true;
+    walletTx.fFromMe = true;
+    walletTx.BindWallet(this);
+
+    walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
+    walletTx.strName = strName;
+    walletTx.nControlN = 0;
+
+    CValidationState state;
+    if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
+        strFail = "Failed to commit BitName registration transaction! Reject reason: " + FormatStateMessage(state) + "\n";
         return false;
     }
     tx = walletTx.tx;
