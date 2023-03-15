@@ -330,7 +330,7 @@ public:
 
     CAmount amountAssetIn;
     int nControlN;
-    uint32_t nAssetID;
+    uint256 nAssetID;
 
     // memory only
     mutable bool fDebitCached;
@@ -395,7 +395,7 @@ public:
         nOrderPos = -1;
         amountAssetIn = CAmount(0);
         nControlN = -1;
-        nAssetID = 0;
+        nAssetID = uint256();
     }
 
     ADD_SERIALIZE_METHODS;
@@ -720,7 +720,7 @@ private:
 
     /* Used by TransactionAddedToMemorypool/BlockConnected/Disconnected.
      * Should be called with pindexBlock and posInBlock if this is for a transaction that is included in a block. */
-    void SyncTransaction(const CTransactionRef& tx, const CBlockIndex *pindex = nullptr, int posInBlock = 0, CAmount amountAssetIn = CAmount(0), int nControlN = -1, uint32_t nAssetID = 0);
+    void SyncTransaction(const CTransactionRef& tx, const CBlockIndex *pindex = nullptr, int posInBlock = 0, int nControlN = -1, uint256 nAssetID = uint256());
 
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
@@ -858,7 +858,7 @@ public:
      */
     void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlySafe=true, const CCoinControl *coinControl = nullptr, const CAmount& nMinimumAmount = 1, const CAmount& nMaximumAmount = MAX_MONEY, const CAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t nMaximumCount = 0, const int nMinDepth = 0, const int nMaxDepth = 9999999) const;
 
-    void AvailableAssets(std::vector<COutput>& vCoins, uint256 txid = uint256()) const;
+    void AvailableBitNames(std::vector<COutput>& vCoins, uint256 txid = uint256()) const;
 
     /**
      * Return list of available coins and locked coins grouped by non-change output address.
@@ -959,7 +959,7 @@ public:
     void TransactionAddedToMempool(const CTransactionRef& tx) override;
     void BlockConnected(const std::map<uint256, BitNameTransactionData>& mapAssetData, const std::shared_ptr<const CBlock>& pblock, const CBlockIndex *pindex, const std::vector<CTransactionRef>& vtxConflicted) override;
     void BlockDisconnected(const std::shared_ptr<const CBlock>& pblock) override;
-    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate, CAmount amountAssetIn = CAmount(0), int nControlN = -1, uint32_t nAssetID = 0);
+    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate, int nControlN = -1, uint256 nAssetID = uint256());
     int64_t RescanFromTime(int64_t startTime, const WalletRescanReserver& reserver, bool update);
     CBlockIndex* ScanForWalletTransactions(CBlockIndex* pindexStart, CBlockIndex* pindexStop, const WalletRescanReserver& reserver, bool fUpdate = false);
     void TransactionRemovedFromMempool(const CTransactionRef &ptx) override;
@@ -992,11 +992,10 @@ public:
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
                            std::string& strFailReason, const CCoinControl& coin_control, bool sign = true);
-    bool CreateAsset(CTransactionRef& tx, std::string& strFail, const std::string& strTicker, const std::string& strHeadline, const uint256& hashPayload, const CAmount& nFee, const int64_t nSupply, const std::string& strControllerDest, const std::string& strGenesisDest, bool fImmutable = false);
+    bool ReserveBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& salt, const CAmount& nFee, const std::string& strDest, bool fImmutable = false);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
 
-    bool TransferAsset(std::string& strFail, uint256& txidOut, const uint256& txid, const CTxDestination& dest, const CAmount& nFee, const CAmount& nAmount);
-    bool TransferAssetControl(std::string& strFail, const uint256& txid, const CTxDestination& dest, const CAmount& nFee);
+    bool TransferBitName(std::string& strFail, uint256& txidOut, const uint256& txid, const CTxDestination& dest, const CAmount& nFee);
 
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
     bool AddAccountingEntry(const CAccountingEntry&);

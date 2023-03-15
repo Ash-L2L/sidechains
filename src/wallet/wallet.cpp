@@ -1028,7 +1028,7 @@ bool CWallet::LoadToWallet(const CWalletTx& wtxIn)
  * Abandoned state should probably be more carefully tracked via different
  * posInBlock signals or by checking mempool presence when necessary.
  */
-bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate, CAmount amountAssetIn, int nControlN, uint32_t nAssetID)
+bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate, int nControlN, uint256 nAssetID)
 {
     const CTransaction& tx = *ptx;
     {
@@ -1076,7 +1076,6 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const CBlockI
             }
 
             CWalletTx wtx(this, ptx);
-            wtx.amountAssetIn = amountAssetIn;
             wtx.nControlN = nControlN;
             wtx.nAssetID = nAssetID;
 
@@ -1219,10 +1218,10 @@ void CWallet::MarkConflicted(const uint256& hashBlock, const uint256& hashTx)
     }
 }
 
-void CWallet::SyncTransaction(const CTransactionRef& ptx, const CBlockIndex *pindex, int posInBlock, CAmount amountAssetIn, int nControlN, uint32_t nAssetID) {
+void CWallet::SyncTransaction(const CTransactionRef& ptx, const CBlockIndex *pindex, int posInBlock, int nControlN, uint256 nAssetID) {
     const CTransaction& tx = *ptx;
 
-    if (!AddToWalletIfInvolvingMe(ptx, pindex, posInBlock, true, amountAssetIn, nControlN, nAssetID))
+    if (!AddToWalletIfInvolvingMe(ptx, pindex, posInBlock, true, nControlN, nAssetID))
         return; // Not one of ours
 
     // If a transaction changes 'conflicted' state, that changes the balance
@@ -1272,7 +1271,7 @@ void CWallet::BlockConnected(const std::map<uint256, BitNameTransactionData>& ma
         std::map<uint256, BitNameTransactionData>::const_iterator it;
         it = mapAssetData.find(pblock->vtx[i]->GetHash());
         if (it != mapAssetData.end()) {
-            SyncTransaction(pblock->vtx[i], pindex, i, it->second.amountAssetIn, it->second.nControlN, it->second.nAssetID);
+            SyncTransaction(pblock->vtx[i], pindex, i, it->second.nBitNameN, it->second.nAssetID);
         } else {
             SyncTransaction(pblock->vtx[i], pindex, i);
         }
@@ -2300,7 +2299,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
 // TODO
 // For basic testing this will take in an optional txid
 // A better version might take in an asset ID to filter outputs
-void CWallet::AvailableAssets(std::vector<COutput> &vCoins, uint256 txid) const
+void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) const
 {
     AssertLockHeld(cs_main);
     AssertLockHeld(cs_wallet);
@@ -2316,7 +2315,7 @@ void CWallet::AvailableAssets(std::vector<COutput> &vCoins, uint256 txid) const
         if (!txid.IsNull() && wtxid != txid)
             continue;
 
-        if (wtx->amountAssetIn <= 0 && wtx->tx->nVersion != TRANSACTION_BITNAME_CREATE_VERSION)
+        if (wtx->tx->nVersion != TRANSACTION_BITNAME_CREATE_VERSION)
             continue;
 
         if (!CheckFinalTx(*wtx->tx))
@@ -2331,6 +2330,7 @@ void CWallet::AvailableAssets(std::vector<COutput> &vCoins, uint256 txid) const
         if (!safeTx)
             continue;
 
+        // FIXME: adapt for bitnames
         if (wtx->amountAssetIn) {
             // Need to find the asset outputs that belong to us,
             // while adding up to the total amountassetin. Some of the outputs
@@ -3134,7 +3134,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
     return true;
 }
 
-bool CWallet::CreateAsset(CTransactionRef& tx, std::string& strFail, const std::string& strTicker, const std::string& strHeadline, const uint256& hashPayload, const CAmount& nFee, const int64_t nSupply, const std::string& strControllerDest, const std::string& strGenesisDest, bool fImmutable)
+bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& salt, const CAmount& nFee, const std::string& strDest, bool fImmutable)
 {
     strFail = "Unknown error!";
 
@@ -3143,15 +3143,9 @@ bool CWallet::CreateAsset(CTransactionRef& tx, std::string& strFail, const std::
         return false;
     }
 
-    CTxDestination destControl = DecodeDestination(strControllerDest);
-    if (!fImmutable && !IsValidDestination(destControl)) {
-        strFail = "Invalid controller destination";
-        return false;
-    }
-
-    CTxDestination destGenesis = DecodeDestination(strGenesisDest);
-    if (!IsValidDestination(destGenesis)) {
-        strFail = "Invalid genesis destination";
+    CTxDestination dest = DecodeDestination(strDest);
+    if (!fImmutable && !IsValidDestination(dest)) {
+        strFail = "Invalid destination";
         return false;
     }
 
@@ -3159,18 +3153,19 @@ bool CWallet::CreateAsset(CTransactionRef& tx, std::string& strFail, const std::
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
 
     // BitName info
-    mtx.ticker = strTicker;
-    mtx.headline = strHeadline;
-    mtx.payload = hashPayload;
+    uint256 commitment;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Write(salt.begin(), salt.size())
+              .Finalize((unsigned char*) &commitment);
+    mtx.commitment = commitment;
 
-    // contoller output
+    // reservation output
     if (fImmutable)
         mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
     else
-        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(destControl)));
-
-    // genesis output
-    mtx.vout.push_back(CTxOut(nSupply, GetScriptForDestination(destGenesis)));
+        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
 
     BlockUntilSyncedToCurrentChain();
 
@@ -3281,7 +3276,7 @@ bool CWallet::CreateAsset(CTransactionRef& tx, std::string& strFail, const std::
     return true;
 }
 
-bool CWallet::TransferAsset(std::string& strFail, uint256& txidOut, const uint256& txid, const CTxDestination& dest, const CAmount& nFee, const CAmount& nAmount)
+bool CWallet::TransferBitName(std::string& strFail, uint256& txidOut, const uint256& txid, const CTxDestination& dest, const CAmount& nFee)
 {
     strFail = "Unknown error!";
 
@@ -3305,7 +3300,7 @@ bool CWallet::TransferAsset(std::string& strFail, uint256& txidOut, const uint25
 
     // Get our asset outputs from txid
     std::vector<COutput> vOut;
-    AvailableAssets(vOut, txid);
+    AvailableBitNames(vOut, txid);
 
     if (vOut.empty()) {
         strFail = "No BitNames of this type available!";
@@ -3315,45 +3310,17 @@ bool CWallet::TransferAsset(std::string& strFail, uint256& txidOut, const uint25
     CMutableTransaction mtx;
 
     // Choose asset outputs to cover transfer
-    uint32_t nAssetID = vOut[0].tx->nAssetID;
-    CAmount nAmountAsset = CAmount(0);
+    // FIXME: adapt for BitNames
+    uint256 nAssetID = vOut[0].tx->nAssetID;
     std::vector<COutput> vAssetSpent;
     for (const COutput& out : vOut) {
         mtx.vin.push_back(CTxIn(txid, out.i, CScript()));
         vAssetSpent.push_back(out);
-
-        // Have we found enough?
-        nAmountAsset += out.tx->tx->vout[out.i].nValue;
-        if (nAmountAsset >= nAmount)
-            break;
-    }
-
-    if (nAmountAsset < nAmount) {
-        strFail = "Insufficient asset funds!";
-        return false;
-    }
-
-    // Handle asset change
-    const CAmount nAssetChange = nAmountAsset - nAmount;
-    CReserveKey reserveKeyAsset(vpwallets[0]);
-    if (nAssetChange > 0) {
-        CScript scriptAssetChange;
-
-        // Reserve a new key pair from key pool
-        CPubKey vchPubKey;
-        if (!reserveKeyAsset.GetReservedKey(vchPubKey))
-        {
-            strFail = "Keypool ran out, please call keypoolrefill first!\n";
-            return false;
-        }
-        scriptAssetChange = GetScriptForDestination(vchPubKey.GetID());
-
-        CTxOut out(nAssetChange, scriptAssetChange);
-        mtx.vout.push_back(out);
+        break;
     }
 
     // Add asset transfer output
-    mtx.vout.push_back(CTxOut(nAmount, GetScriptForDestination(dest)));
+    mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
 
     // Select coins to cover fee
     std::vector<COutput> vCoins;
@@ -3464,23 +3431,17 @@ bool CWallet::TransferAsset(std::string& strFail, uint256& txidOut, const uint25
     walletTx.fFromMe = true;
     walletTx.BindWallet(this);
 
-    walletTx.amountAssetIn = nAmountAsset;
     walletTx.nAssetID = nAssetID;
 
     walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
-        strFail = "Failed to commit BitName creation transaction! Reject reason: " + FormatStateMessage(state) + "\n";
+        strFail = "Failed to commit BitName transfer transaction! Reject reason: " + FormatStateMessage(state) + "\n";
         return false;
     }
 
     txidOut = walletTx.tx->GetHash();
 
-    return true;
-}
-
-bool CWallet::TransferAssetControl(std::string& strFail, const uint256& txid, const CTxDestination& dest, const CAmount& nFee)
-{
     return true;
 }
 

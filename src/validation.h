@@ -55,8 +55,11 @@ struct LockPoints;
 
 struct BitNameTransactionData {
     uint256 txid;
+    // FIXME: remove
     CAmount amountAssetIn;
+    // FIXME: remove
     int nBitNameN;
+    // FIXME: rename
     uint256 nAssetID;
 };
 
