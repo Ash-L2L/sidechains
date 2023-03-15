@@ -331,6 +331,10 @@ public:
     CAmount amountAssetIn;
     int nControlN;
     uint256 nAssetID;
+    // bitname for reservations / registrations
+    std::string strName;
+    // salt for bitname reservations
+    uint256 sok;
 
     // memory only
     mutable bool fDebitCached;
@@ -396,6 +400,8 @@ public:
         amountAssetIn = CAmount(0);
         nControlN = -1;
         nAssetID = uint256();
+        strName = "";
+        sok = uint256();
     }
 
     ADD_SERIALIZE_METHODS;
@@ -428,6 +434,8 @@ public:
         READWRITE(amountAssetIn);
         READWRITE(nControlN);
         READWRITE(nAssetID);
+        READWRITE(strName);
+        READWRITE(sok);
 
         if (ser_action.ForRead())
         {
@@ -858,6 +866,7 @@ public:
      */
     void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlySafe=true, const CCoinControl *coinControl = nullptr, const CAmount& nMinimumAmount = 1, const CAmount& nMaximumAmount = MAX_MONEY, const CAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t nMaximumCount = 0, const int nMinDepth = 0, const int nMaxDepth = 9999999) const;
 
+    void AvailableBitNameReservations(std::vector<COutput>& vCoins, uint256 txid = uint256()) const;
     void AvailableBitNames(std::vector<COutput>& vCoins, uint256 txid = uint256()) const;
 
     /**

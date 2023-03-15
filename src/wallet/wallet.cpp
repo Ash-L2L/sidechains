@@ -2174,6 +2174,7 @@ CAmount CWallet::GetAvailableBalance(const CCoinControl* coinControl) const
     return balance;
 }
 
+// FIXME: review for BitNames
 void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const CCoinControl *coinControl, const CAmount &nMinimumAmount, const CAmount &nMaximumAmount, const CAmount &nMinimumSumAmount, const uint64_t nMaximumCount, const int nMinDepth, const int nMaxDepth) const
 {
     AssertLockHeld(cs_main);
@@ -2246,6 +2247,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
         CAmount amountAssetOut = CAmount(0);
 
         for (unsigned int i = 0; i < pcoin->tx->vout.size(); i++) {
+            // FIXME: probably wrong
             // Skip outputs until we have accounted for BitName input
             if (amountAssetIn != amountAssetOut) {
                 amountAssetOut += pcoin->tx->vout[i].nValue;
@@ -2299,6 +2301,114 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
 // TODO
 // For basic testing this will take in an optional txid
 // A better version might take in an asset ID to filter outputs
+// FIXME: review/adapt to BitNames
+void CWallet::AvailableBitNameReservations(std::vector<COutput> &vCoins, uint256 txid) const
+{
+    AssertLockHeld(cs_main);
+    AssertLockHeld(cs_wallet);
+
+    vCoins.clear();
+
+    for (const auto& entry : mapWallet)
+    {
+        const uint256& wtxid = entry.first;
+        const CWalletTx* wtx = &entry.second;
+
+        // Skip transactions not from optional txid
+        if (!txid.IsNull() && wtxid != txid)
+            continue;
+
+        if (wtx->tx->nVersion != TRANSACTION_BITNAME_CREATE_VERSION)
+            continue;
+
+        if (!CheckFinalTx(*wtx->tx))
+            continue;
+
+        // Ignore unconfirmed assets
+        int nDepth = wtx->GetDepthInMainChain();
+        if (nDepth < 1)
+            continue;
+
+        bool safeTx = wtx->IsTrusted();
+        if (!safeTx)
+            continue;
+
+        // FIXME: adapt for bitnames
+        if (wtx->amountAssetIn) {
+            // Need to find the asset outputs that belong to us,
+            // while adding up to the total amountassetin. Some of the outputs
+            // might not be ours.
+            CAmount amountAssetOut = CAmount(0);
+            for (unsigned int i = 0; i < wtx->tx->vout.size(); i++) {
+                if (amountAssetOut >= wtx->amountAssetIn)
+                    break;
+
+                amountAssetOut += wtx->tx->vout[i].nValue;
+
+                // Skip asset control outputs
+                if (wtx->nControlN == (int)i)
+                   continue;
+
+                if (IsLockedCoin(entry.first, i))
+                    continue;
+
+                if (IsSpent(wtxid, i))
+                    continue;
+
+                isminetype mine = IsMine(wtx->tx->vout[i]);
+
+                if (mine == ISMINE_NO) {
+                    continue;
+                }
+
+                bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
+                bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
+
+                vCoins.push_back(COutput(wtx, i, nDepth, fSpendableIn, fSolvableIn, true));
+            }
+        }
+        else
+        if (wtx->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+            // in a reservation, the `name` tx field is not set, and the
+            // only inputs are Bitcoins
+            if (!wtx->tx->name.empty())
+                continue;
+            // FIXME: check that the last input is Bitcoins
+            if (!wtx->tx->vin.empty()) {
+                //wtx->tx->vin.back()
+            }
+            
+            // Check if we have any reservation from the first output
+            if (wtx->tx->vout.size() < 1)
+                continue;
+
+            // Do not return the controller output
+            /*
+            if (!IsLockedCoin(entry.first, 0) && !IsSpent(wtxid, 0)) {
+                isminetype mine = IsMine(wtx->tx->vout[0]);
+                if (mine != ISMINE_NO) {
+                    bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
+                    bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
+                    vCoins.push_back(COutput(wtx, 0, nDepth, fSpendableIn, fSolvableIn, true));
+                }
+            }
+            */
+            if  (!IsLockedCoin(entry.first, 1) && !IsSpent(wtxid, 1)) {
+                isminetype mine = IsMine(wtx->tx->vout[1]);
+                if (mine != ISMINE_NO) {
+                    bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
+                    bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
+                    vCoins.push_back(COutput(wtx, 1, nDepth, fSpendableIn, fSolvableIn, true));
+                }
+            }
+        }
+    }
+}
+
+// TODO
+// For basic testing this will take in an optional txid
+// A better version might take in an asset ID to filter outputs
+// FIXME: review/adapt to BitNames
 void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) const
 {
     AssertLockHeld(cs_main);

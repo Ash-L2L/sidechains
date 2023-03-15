@@ -3815,6 +3815,63 @@ UniValue reservebitname(const JSONRPCRequest& request)
     return response;
 }
 
+UniValue listmybitnamereservations(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size())
+        throw std::runtime_error(
+            "listmybitnamereservations\n"
+            "\nList BitName reservations owned by this wallet\n"
+            + HelpRequiringPassphrase(pwallet) +
+            "\nResult (array):\n"
+            "\"bitnamereservation\"           (string)\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listmybitnamereservations", "")
+            + HelpExampleRpc("listmybitnamereservations", "")
+        );
+
+    ObserveSafeMode();
+
+    EnsureWalletIsUnlocked(pwallet);
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    std::vector<COutput> vOutput;
+    pwallet->AvailableBitNameReservations(vOutput);
+
+    UniValue ar(UniValue::VARR);
+    for (const COutput& o : vOutput) {
+        UniValue obj(UniValue::VOBJ);
+        obj.pushKV("assetamount", o.tx->tx->vout[o.i].nValue);
+        obj.pushKV("outputtxid", o.tx->GetHash().ToString());
+        obj.pushKV("outputn", o.i);
+        obj.pushKV("confirmations", o.nDepth);
+        obj.pushKV("amountassetin", o.tx->amountAssetIn);
+        obj.pushKV("ncontroln", o.tx->nControlN);
+        obj.pushKV("id", o.tx->nAssetID.ToString());
+        obj.pushKV("name", o.tx->strName);
+        obj.pushKV("salt", o.tx->sok.ToString());
+
+        // Get BitNameDB data
+        BitNameReservation bitNameReservation;
+        if (!pbitnamereservationtree->GetBitNameReservation(o.tx->nAssetID, bitNameReservation))
+            throw JSONRPCError(RPC_MISC_ERROR, "Failed to load bitname reservation data!");
+
+        // FIXME: is `id` included twice?
+        obj.pushKV("id", bitNameReservation.nID.ToString());
+        obj.pushKV("commitment", bitNameReservation.hashedName.ToString());
+        obj.pushKV("creationtxid", bitNameReservation.txid.ToString());
+
+        ar.push_back(obj);
+    }
+    return ar;
+}
+
 UniValue listmybitnames(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -4299,7 +4356,8 @@ static const CRPCCommand commands[] =
     { "sidechain",          "createwithdrawalrefundrequest",    &createwithdrawalrefundrequest, {"id"} },
     { "sidechain",          "refundallwithdrawals",             &refundallwithdrawals,          {} },
 
-    { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "nfee", "dest"} },
+    { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "salt", "nfee", "dest"} },
+    { "BitNames",          "listmybitnamereservations",        &listmybitnamereservations,       {} },
     { "BitNames",          "listmybitnames",                   &listmybitnames,                  {} },
     { "BitNames",          "transferbitname",                  &transferbitname,                 {"txid", "destination", "fee"} },
 };
