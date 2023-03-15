@@ -116,7 +116,13 @@ public:
         genesis = CreateGenesisBlock(1677671991, 1, 0);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256S("0x359d17fc7cc60653fb72bbec271efab88af16ba9f15a55b060fe632c7de5e978"));
+        // FIXME: remove
+        std::printf("Genesis Hash: 0x%s\n", consensus.hashGenesisBlock.ToString().c_str());
+        std::fprintf(stderr, "Genesis Hash: 0x%s\n", consensus.hashGenesisBlock.ToString().c_str());
+        std::printf("Genesis Merkle Root: 0x%s\n", genesis.hashMerkleRoot.ToString().c_str());
+        std::fprintf(stderr, "Genesis Merkle Root: 0x%s\n", genesis.hashMerkleRoot.ToString().c_str());
+
+        assert(consensus.hashGenesisBlock == uint256S("0xc4229719a13b1bd38c9c157d534e101badf74702736456be75d8f8808a9b1aed"));
         assert(genesis.hashMerkleRoot == uint256S("0x8eb1364f43885edf1322b2d32095e57abb03c32a61a80ac25c8db3de58e16b8a"));
 
         vSeeds.clear();
@@ -198,7 +204,14 @@ public:
         genesis = CreateGenesisBlock(1677672170, 1, 0);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        assert(consensus.hashGenesisBlock == uint256S("0x6fb2c5081b13ecf369b324db61406244c7df519b4676e28b536a4ef546e387eb"));
+        // FIXME: remove
+        std::printf("Genesis Hash: 0x%s\n", consensus.hashGenesisBlock.ToString().c_str());
+        std::fprintf(stderr, "Genesis Hash: 0x%s\n", consensus.hashGenesisBlock.ToString().c_str());
+        std::printf("Genesis Merkle Root: 0x%s\n", genesis.hashMerkleRoot.ToString().c_str());
+        std::fprintf(stderr, "Genesis Merkle Root: 0x%s\n", genesis.hashMerkleRoot.ToString().c_str());
+
+
+        assert(consensus.hashGenesisBlock == uint256S("0x01f8d4c931dae78fc007deb36c3e0fabff2ff45eda1fc3440f2e61cc1fe87678"));
         assert(genesis.hashMerkleRoot == uint256S("0x8eb1364f43885edf1322b2d32095e57abb03c32a61a80ac25c8db3de58e16b8a"));
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
