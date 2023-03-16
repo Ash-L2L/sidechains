@@ -2346,7 +2346,7 @@ void CWallet::AvailableBitNameReservations(std::vector<COutput> &vCoins, uint256
         if (wtx->tx->vout.size() < 1)
             continue;
 
-        // Do not return the controller output
+        // The first output is a bitname reservation
         if (!IsLockedCoin(entry.first, 0) && !IsSpent(wtxid, 0)) {
             isminetype mine = IsMine(wtx->tx->vout[0]);
             if (mine != ISMINE_NO) {
@@ -2393,64 +2393,26 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
         if (!safeTx)
             continue;
 
-        // FIXME: adapt for bitnames
-        if (wtx->amountAssetIn) {
-            // Need to find the asset outputs that belong to us,
-            // while adding up to the total amountassetin. Some of the outputs
-            // might not be ours.
-            CAmount amountAssetOut = CAmount(0);
-            for (unsigned int i = 0; i < wtx->tx->vout.size(); i++) {
-                if (amountAssetOut >= wtx->amountAssetIn)
-                    break;
+        // in a registration, the `name` tx field is set, and the
+        // last input is the reservation
+        if (!wtx->tx->name.empty())
+            continue;
+        // FIXME: check that the last input is the reservation
+        if (!wtx->tx->vin.empty()) {
+            //wtx->tx->vin.back()
+        }
+        
+        // Check if we have any registration from the first output
+        if (wtx->tx->vout.size() < 1)
+            continue;
 
-                amountAssetOut += wtx->tx->vout[i].nValue;
-
-                // Skip asset control outputs
-                if (wtx->nControlN == (int)i)
-                   continue;
-
-                if (IsLockedCoin(entry.first, i))
-                    continue;
-
-                if (IsSpent(wtxid, i))
-                    continue;
-
-                isminetype mine = IsMine(wtx->tx->vout[i]);
-
-                if (mine == ISMINE_NO) {
-                    continue;
-                }
-
+        // The first output is a bitname
+        if (!IsLockedCoin(entry.first, 0) && !IsSpent(wtxid, 0)) {
+            isminetype mine = IsMine(wtx->tx->vout[0]);
+            if (mine != ISMINE_NO) {
                 bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
                 bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
-
-                vCoins.push_back(COutput(wtx, i, nDepth, fSpendableIn, fSolvableIn, true));
-            }
-        }
-        else
-        if (wtx->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-            // Check if we have any assets from the first two outputs
-            if (wtx->tx->vout.size() < 2)
-                continue;
-
-            // Do not return the controller output
-            /*
-            if (!IsLockedCoin(entry.first, 0) && !IsSpent(wtxid, 0)) {
-                isminetype mine = IsMine(wtx->tx->vout[0]);
-                if (mine != ISMINE_NO) {
-                    bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
-                    bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
-                    vCoins.push_back(COutput(wtx, 0, nDepth, fSpendableIn, fSolvableIn, true));
-                }
-            }
-            */
-            if  (!IsLockedCoin(entry.first, 1) && !IsSpent(wtxid, 1)) {
-                isminetype mine = IsMine(wtx->tx->vout[1]);
-                if (mine != ISMINE_NO) {
-                    bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO);
-                    bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
-                    vCoins.push_back(COutput(wtx, 1, nDepth, fSpendableIn, fSolvableIn, true));
-                }
+                vCoins.push_back(COutput(wtx, 0, nDepth, fSpendableIn, fSolvableIn, true));
             }
         }
     }
