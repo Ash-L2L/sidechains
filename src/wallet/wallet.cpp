@@ -3383,7 +3383,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     std::vector<COutput> vBitNameReservation;
     AvailableBitNameReservations(vBitNameReservation);
     for (COutput& output : vBitNameReservation) {
-        if (output.tx->sok == reservation_commitment) {
+        if (output.tx->tx->commitment == reservation_commitment) {
             reservation_ptr = &output;
             break;
         }
