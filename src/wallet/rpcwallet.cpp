@@ -3880,14 +3880,14 @@ UniValue registerbitname(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_MISC_ERROR, strError);
     }
     // Fee
-    CAmount nFee = AmountFromValue(request.params[2]);
+    CAmount nFee = AmountFromValue(request.params[4]);
     if (nFee <= 0) {
         std::string strError = "Invalid fee amount";
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
     }
     // Destination address
-    CTxDestination dest = DecodeDestination(request.params[3].get_str());
+    CTxDestination dest = DecodeDestination(request.params[5].get_str());
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid destination address");
     }
