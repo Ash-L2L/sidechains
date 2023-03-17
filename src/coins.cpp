@@ -109,12 +109,12 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint2
         // The first output of a BitName creation transaction is the bitname
         // output.
         // The rest are normal outputs
-        bool fNewAsset = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+        bool fNewReservation = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
         for (size_t i = 0; i < tx.vout.size(); ++i) {
-            bool fBitName = fNewAsset && i == 0;
+            bool fBitNameReservation = fNewReservation && i == 0;
             uint256 nID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
             bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false, fBitName, fBitName ? nID : uint256()), overwrite);
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fBitNameReservation, false, fBitNameReservation ? nID : uint256()), overwrite);
         }
     }
 }
