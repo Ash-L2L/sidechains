@@ -114,7 +114,7 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint2
             bool fBitNameReservation = fNewReservation && i == 0;
             uint256 nID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
             bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fBitNameReservation, false, fBitNameReservation ? nID : uint256()), overwrite);
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fBitNameReservation, false, fBitNameReservation ? nID : uint256(), fBitNameReservation ? tx.commitment : uint256()), overwrite);
         }
     }
 }
