@@ -2395,11 +2395,13 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
 
         // in a registration, the `name` tx field is set, and the
         // last input is the reservation
-        if (!wtx->tx->name.empty())
+        if (wtx->tx->name.empty())
             continue;
         // FIXME: check that the last input is the reservation
-        if (!wtx->tx->vin.empty()) {
-            //wtx->tx->vin.back()
+        if (wtx->tx->vin.empty()) {
+            continue;
+        } else {
+            // FIXME: check that the last input is the reservation
         }
         
         // Check if we have any registration from the first output
