@@ -2254,8 +2254,8 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
                 continue;
             }
 
-            // Skip controller & genesis output of asset creation tx
-            if (pcoin->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION && i < 2)
+            // Skip reservation/bitname output of bitname reservation/registration tx
+            if (pcoin->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION && i < 1)
                 continue;
 
             if (pcoin->tx->vout[i].nValue < nMinimumAmount || pcoin->tx->vout[i].nValue > nMaximumAmount)
