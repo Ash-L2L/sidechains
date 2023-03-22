@@ -2337,9 +2337,16 @@ void CWallet::AvailableBitNameReservations(std::vector<COutput> &vCoins, uint256
         // only inputs are Bitcoins
         if (!wtx->tx->name.empty())
             continue;
-        // FIXME: check that the last input is Bitcoins
+        // check that the last input is Bitcoins
         if (!wtx->tx->vin.empty()) {
-            //wtx->tx->vin.back()
+            CTxIn last_input = wtx->tx->vin.back();
+            Coin last_input_coin;
+            if (!pcoinsTip->GetCoin(last_input.prevout, last_input_coin)) {
+                // FIXME: throw an error
+                continue;
+            }
+            if (last_input_coin.fBitNameReservation || last_input_coin.fBitName)
+                continue;
         }
         
         // Check if we have any reservation from the first output
@@ -2397,11 +2404,18 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
         // last input is the reservation
         if (wtx->tx->name.empty())
             continue;
-        // FIXME: check that the last input is the reservation
         if (wtx->tx->vin.empty()) {
             continue;
         } else {
-            // FIXME: check that the last input is the reservation
+            // check that the last input is a reservation
+            CTxIn last_input = wtx->tx->vin.back();
+            Coin last_input_coin;
+            if (!pcoinsTip->GetCoin(last_input.prevout, last_input_coin)) {
+                // FIXME: throw an error
+                continue;
+            }
+            if (!last_input_coin.fBitNameReservation)
+                continue;
         }
         
         // Check if we have any registration from the first output
