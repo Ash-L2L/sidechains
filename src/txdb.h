@@ -184,11 +184,11 @@ public:
 
     std::vector<BitName> GetBitNames();
 
-    bool GetLastBitNameID(uint256& nID);
-    bool WriteLastBitNameID(const uint256 nID);
     bool GetBitName(const uint256 nID, BitName& bitname);
+    bool GetBitName(const std::string strName, BitName& bitname);
 
     bool RemoveBitName(const uint256 nID);
+    bool RemoveBitName(const std::string strName);
 };
 
 

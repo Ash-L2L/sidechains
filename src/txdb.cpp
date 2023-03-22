@@ -35,7 +35,6 @@ static const char DB_LAST_SIDECHAIN_DEPOSIT = 'x';
 static const char DB_LAST_SIDECHAIN_WITHDRAWAL_BUNDLE = 'w';
 
 static const char DB_BITNAME = 'A';
-static const char DB_BITNAME_LAST_ID = 'I';
 
 static const char DB_BITNAME_RESERVATION = 'Q';
 static const char DB_BITNAME_RESERVATION_LAST_ID = 'V';
@@ -623,29 +622,35 @@ std::vector<BitName> BitNameDB::GetBitNames()
     return vBitName;
 }
 
-bool BitNameDB::GetLastBitNameID(uint256& nID)
-{
-    // Look up the last asset ID (in chronological order)
-    if (!Read(DB_BITNAME_LAST_ID, nID))
-        return false;
-
-    return true;
-}
-
-bool BitNameDB::WriteLastBitNameID(const uint256 nID)
-{
-    return Write(DB_BITNAME_LAST_ID, nID);
-}
-
 bool BitNameDB::RemoveBitName(const uint256 nID)
 {
     std::pair<char, uint256> key = std::make_pair(DB_BITNAME, nID);
     return Erase(key);
 }
 
+bool BitNameDB::RemoveBitName(const std::string strName)
+{
+    uint256 nID;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &nID);
+    return RemoveBitName(nID);
+}
+
 bool BitNameDB::GetBitName(const uint256 nID, BitName& bitname)
 {
     return Read(std::make_pair(DB_BITNAME, nID), bitname);
+}
+
+bool BitNameDB::GetBitName(const std::string strName, BitName& bitname)
+{
+    uint256 nID;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &nID);
+    return GetBitName(nID, bitname);
 }
 
 BitNameReservationDB::BitNameReservationDB(size_t nCacheSize, bool fMemory, bool fWipe)

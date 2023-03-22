@@ -1715,15 +1715,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
             // A bitname registration must reveal the `name` parameter
             if (!tx.name.empty()) {
                 // BitName Registration
-                uint256 nBitNameIDLast = uint256();
-                pbitnametree->GetLastBitNameID(nBitNameIDLast);
-                arith_uint256 nBitNameIDLast_pred = UintToArith256(nBitNameIDLast);
-                nBitNameIDLast_pred--;
-                if (!pbitnametree->WriteLastBitNameID(ArithToUint256(nBitNameIDLast_pred))) {
-                    error("DisconnectBlock(): Failed to undo BitNameDB BitName ID #!");
-                    return DISCONNECT_FAILED;
-                }
-                if (!pbitnametree->RemoveBitName(nBitNameIDLast)) {
+                if (!pbitnametree->RemoveBitName(tx.name)) {
                     error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
                     return DISCONNECT_FAILED;
                 }
@@ -2350,13 +2342,14 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             // If the `name` field is present, this is a bitname registration
             if (!tx.name.empty()) {
                 // BitName registration
-                uint256 nBitNameIDLast = uint256();
-                pbitnametree->GetLastBitNameID(nBitNameIDLast);
-                
+                uint256 nBitNameID;
+                const unsigned char* name_ptr =
+                    reinterpret_cast<const unsigned char*>(tx.name.c_str());
+                CHash256().Write(name_ptr, tx.name.size())
+                        .Finalize((unsigned char*) &nBitNameID);
+
                 BitName bitname;
-                arith_uint256 nBitNameIDLast_tmp = UintToArith256(nBitNameIDLast);
-                nBitNameIDLast_tmp++;
-                bitname.nID = ArithToUint256(nBitNameIDLast_tmp);
+                bitname.nID = nBitNameID;
                 bitname.strName = tx.name;
                 bitname.commitment = tx.commitment;
                 bitname.fIn4 = tx.fIn4;
@@ -2366,10 +2359,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 bitname.txid = tx.GetHash();
 
                 vBitName.push_back(bitname);
-
-                // Update latest BitName ID #
-                if (!fJustCheck && !pbitnametree->WriteLastBitNameID(bitname.nID))
-                    return error("%s: Failed to update last BitName ID #!\n", __func__);
 
                 // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
                 nNewAssetID = bitname.nID;
