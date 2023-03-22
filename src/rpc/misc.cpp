@@ -938,7 +938,7 @@ static const CRPCCommand commands[] =
 
     /* BitNames */
     { "BitNames",          "listbitnames",                  &listbitnames,                  {}},
-    { "BitNames",          "resolvebitname",                &resolvebitname,                {}},
+    { "BitNames",          "resolvebitname",                &resolvebitname,                {"bitname"}},
     { "BitNames",          "listbitnamereservations",       &listbitnamereservations,       {}},
 };
 
