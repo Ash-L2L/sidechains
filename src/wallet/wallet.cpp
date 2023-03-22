@@ -2341,12 +2341,12 @@ void CWallet::AvailableBitNameReservations(std::vector<COutput> &vCoins, uint256
         if (!wtx->tx->vin.empty()) {
             CTxIn last_input = wtx->tx->vin.back();
             Coin last_input_coin;
-            if (!pcoinsTip->GetCoin(last_input.prevout, last_input_coin)) {
-                // FIXME: throw an error
-                continue;
-            }
-            if (last_input_coin.fBitNameReservation || last_input_coin.fBitName)
-                continue;
+            //if (!pcoinsTip->GetCoin(last_input.prevout, last_input_coin)) {
+            // FIXME: throw an error
+            //   continue;
+            // }
+            //if (last_input_coin.fBitNameReservation || last_input_coin.fBitName)
+            //    continue;
         }
         
         // Check if we have any reservation from the first output
@@ -2410,12 +2410,12 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
             // check that the last input is a reservation
             CTxIn last_input = wtx->tx->vin.back();
             Coin last_input_coin;
-            if (!pcoinsTip->GetCoin(last_input.prevout, last_input_coin)) {
-                // FIXME: throw an error
-                continue;
-            }
-            if (!last_input_coin.fBitNameReservation)
-                continue;
+            //if (!pcoinsTip->GetCoin(last_input.prevout, last_input_coin)) {
+            //    // FIXME: throw an error
+            //    continue;
+            //}
+            //if (!last_input_coin.fBitNameReservation)
+            //    continue;
         }
         
         // Check if we have any registration from the first output
@@ -3184,14 +3184,21 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
         return false;
     }
 
-    CTxDestination dest = DecodeDestination(strDest);
-    if (!fImmutable && !IsValidDestination(dest)) {
-        strFail = "Invalid destination";
+    CReserveKey reservationKey(vpwallets[0]);
+    // Reserve a new key pair from key pool
+    CPubKey vchReservationPubKey;
+    if (!reservationKey.GetReservedKey(vchReservationPubKey))
+    {
+        strFail = "Keypool ran out, please call keypoolrefill first!\n";
         return false;
     }
+    CScript scriptReservation = GetScriptForDestination(vchReservationPubKey.GetID());
 
     CMutableTransaction mtx;
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
+
+    uint256 hmac;
+    
 
     // BitName info
     uint256 commitment;
@@ -3203,10 +3210,7 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     mtx.commitment = commitment;
 
     // reservation output
-    if (fImmutable)
-        mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
-    else
-        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
+    mtx.vout.push_back(CTxOut(1, scriptReservation));
 
     BlockUntilSyncedToCurrentChain();
 
