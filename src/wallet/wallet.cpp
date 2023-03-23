@@ -3383,6 +3383,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
         strFail = "Could not collect enough coins to cover fee!\n";
         return false;
     }
+    std::vector<CInputCoin> vInputCoins(setCoins.begin(), setCoins.end());
 
     // Handle change if there is any
     const CAmount nChange = nAmountRet - nFee;
@@ -3405,7 +3406,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     }
 
     // Add Bitcoin inputs
-    for (const auto& coin : setCoins)
+    for (const auto& coin : vInputCoins)
         mtx.vin.push_back(CTxIn(coin.outpoint.hash, coin.outpoint.n, CScript()));
 
     // Select a reservation to spend
@@ -3428,11 +3429,11 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     CInputCoin reservation_coin = CInputCoin(reservation.tx, reservation.i);
     COutPoint reservation_outpoint = reservation_coin.outpoint;
     mtx.vin.push_back(CTxIn(reservation_outpoint.hash, reservation_outpoint.n, CScript()));
-    setCoins.insert(reservation_coin);
+    vInputCoins.push_back(reservation_coin);
 
     // Dummy sign the transaction to calculate minimum fee
-    std::set<CInputCoin> setCoinsTemp = setCoins;
-    if (!DummySignTx(mtx, setCoinsTemp)) {
+    std::vector<CInputCoin> vInputCoinsTemp = vInputCoins;
+    if (!DummySignTx(mtx, vInputCoinsTemp)) {
         strFail = "Dummy signing transaction for required fee calculation failed!";
         return false;
     }
@@ -3466,7 +3467,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     // Sign the inputs
     const CTransaction txToSign = mtx;
     int nIn = 0;
-    for (const auto& coin : setCoins) {
+    for (const auto& coin : vInputCoins) {
         const CScript& scriptPubKey = coin.txout.scriptPubKey;
         SignatureData sigdata;
 
