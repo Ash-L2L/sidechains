@@ -3184,6 +3184,14 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
         return false;
     }
 
+
+    CTxDestination dest = DecodeDestination(strDest);
+    if (!fImmutable && !IsValidDestination(dest)) {
+        strFail = "Invalid destination";
+        return false;
+    }
+
+    /*
     CReserveKey reservationKey(vpwallets[0]);
     // Reserve a new key pair from key pool
     CPubKey vchReservationPubKey;
@@ -3193,12 +3201,10 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
         return false;
     }
     CScript scriptReservation = GetScriptForDestination(vchReservationPubKey.GetID());
+    */
 
     CMutableTransaction mtx;
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
-
-    uint256 hmac;
-    
 
     // BitName info
     uint256 commitment;
@@ -3210,7 +3216,11 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     mtx.commitment = commitment;
 
     // reservation output
-    mtx.vout.push_back(CTxOut(1, scriptReservation));
+    if (fImmutable)
+        mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
+    else
+        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
+    //mtx.vout.push_back(CTxOut(1, scriptReservation));
 
     BlockUntilSyncedToCurrentChain();
 
