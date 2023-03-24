@@ -326,12 +326,12 @@ public:
 
     const unsigned char replayBytes = 0x3f;
 
-    const uint256 commitment;
-    const std::string name;
+    const uint256 commitment = uint256();
+    const std::string name = "";
     // statement of knowledge for registering BitName
-    const uint256 sok;
-    const bool fIn4;
-    const in_addr in4;
+    const uint256 sok = uint256();
+    const bool fIn4 = false;
+    const in_addr in4 = { .s_addr = 0 };
 
 private:
     /** Memory only. */
@@ -417,11 +417,11 @@ struct CMutableTransaction
     uint32_t nLockTime;
     unsigned char replayBytes = 0x3f;
 
-    uint256 commitment;
-    std::string name;
-    uint256 sok;
-    bool fIn4;
-    in_addr in4;
+    uint256 commitment = uint256();
+    std::string name = "";
+    uint256 sok = uint256();
+    bool fIn4 = false;
+    in_addr in4 = { .s_addr = 0 };
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);
