@@ -15,6 +15,7 @@
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 static const int TRANSACTION_BITNAME_CREATE_VERSION = 10;
+static const int TRANSACTION_BITNAME_UPDATE_VERSION = 11;
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
@@ -210,6 +211,19 @@ struct CMutableTransaction;
  * - bool fIn4 (only used for registrations, to register an ipv4 addr)
  * - in_addr in4 (only used for registrations)
  *
+ *  * Update BitName version 11 tx:
+ * - int32_t nVersion
+ * - unsigned char dummy = 0x00
+ * - unsigned char flags (!= 0)
+ * - std::vector<CTxIn> vin
+ * - std::vector<CTxOut> vout
+ * - if (flags & 1):
+ *   - CTxWitness wit;
+ * - uint32_t nLockTime
+ * - bool fCommitment (used to update the commitment)
+ * - bool fIn4 (used to update ipv4 addr)
+ * - uint256 commitment
+ * - in_addr in4
  */
 template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
@@ -249,13 +263,27 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     s >> tx.nLockTime;
 
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        tx.fCommitment = true;
+        s >> tx.fIn4;
         s >> tx.commitment;
         s >> tx.name;
         s >> tx.sok;
-        s >> tx.fIn4;
         uint32_t in4;
         ::Unserialize(s, in4);
         tx.in4.s_addr = htonl(in4);
+    }
+
+    if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
+        s >> tx.fCommitment;
+        s >> tx.fIn4;
+        if (tx.fCommitment) {
+            s >> tx.commitment;
+        }
+        if (tx.fIn4) {
+            uint32_t in4;
+            ::Unserialize(s, in4);
+            tx.in4.s_addr = htonl(in4);
+        }
     }
 }
 
@@ -290,11 +318,20 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        s << tx.fIn4;
         s << tx.commitment;
         s << tx.name;
         s << tx.sok;
-        s << tx.fIn4;
         s << ntohl(tx.in4.s_addr);
+    } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
+        s << tx.fCommitment;
+        s << tx.fIn4;
+        if (tx.fCommitment) {
+            s << tx.commitment;
+        }
+        if (tx.fIn4) {
+            s << ntohl(tx.in4.s_addr);
+        }
     }
 }
 
@@ -312,7 +349,7 @@ public:
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
     // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
     // MAX_STANDARD_VERSION will be equal.
-    static const int32_t MAX_STANDARD_VERSION=10;
+    static const int32_t MAX_STANDARD_VERSION=11;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, CTransaction is not
@@ -326,11 +363,12 @@ public:
 
     const unsigned char replayBytes = 0x3f;
 
+    const bool fCommitment = false;
+    const bool fIn4 = false;
     const uint256 commitment = uint256();
     const std::string name = "";
     // statement of knowledge for registering BitName
     const uint256 sok = uint256();
-    const bool fIn4 = false;
     const in_addr in4 = { .s_addr = 0 };
 
 private:
@@ -417,10 +455,11 @@ struct CMutableTransaction
     uint32_t nLockTime;
     unsigned char replayBytes = 0x3f;
 
+    bool fCommitment = false;
+    bool fIn4 = false;
     uint256 commitment = uint256();
     std::string name = "";
     uint256 sok = uint256();
-    bool fIn4 = false;
     in_addr in4 = { .s_addr = 0 };
 
     CMutableTransaction();

@@ -4013,13 +4013,17 @@ UniValue listmybitnames(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to load bitname data!");
 
         obj.pushKV("name", bitname.strName);
-        obj.pushKV("commitment", bitname.commitment.ToString());
-        obj.pushKV("creationtxid", bitname.txid.ToString());
-        if (bitname.fIn4) {
+        boost::optional<uint256> commitment = bitname.commitment.front();
+        if (commitment) {
+            obj.pushKV("commitment", (*commitment).ToString());
+        }
+        boost::optional<in_addr_t> opt_in4 = bitname.in4.front();
+        if (opt_in4) {
             struct in_addr in4;
-            in4.s_addr = bitname.in4;
+            in4.s_addr = *opt_in4;
             obj.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
         }
+        obj.pushKV("creationtxid", bitname.txid.front().ToString());
 
         ar.push_back(obj);
     }

@@ -53,6 +53,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
 #include <boost/bind/placeholders.hpp>
+#include <boost/optional.hpp>
 
 using namespace boost::placeholders;
 
@@ -1710,6 +1711,35 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         bool is_coinbase = tx.IsCoinBase();
 
         // Undo BitNameDB updates
+        if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
+            // get the bitname ID
+            const COutPoint& lastOutpoint = tx.vin.back().prevout;
+            const Coin& lastInputCoin = view.AccessCoin(lastOutpoint);
+            
+            BitName bitname;
+            if (!pbitnametree->GetBitName(lastInputCoin.nAssetID, bitname)) {
+                error("DisconnectBlock(): Failed to locate BitNameDB BitName!");
+                return DISCONNECT_FAILED;
+            }
+
+            // roll back updates
+            if (tx.fCommitment) {
+                bitname.commitment.pop_front();
+            }
+            if (tx.fIn4) {
+                bitname.in4.pop_front();
+            }
+            bitname.txid.pop_front();
+
+            if (!pbitnametree->RemoveBitName(tx.name)) {
+                error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
+                return DISCONNECT_FAILED;
+            }
+            if (!pbitnametree->WriteBitName(bitname)) {
+                error("DisconnectBlock(): Failed to write BitNameDB BitName!");
+                return DISCONNECT_FAILED;
+            }
+        }
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             // Undo BitName creation & revert asset ID #
             // A bitname registration must reveal the `name` parameter
@@ -2142,7 +2172,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     std::multimap<std::pair<CScript, CAmount>, uint256> mapRefundOutputs;
     std::vector<SidechainWithdrawal> vRefundedWithdrawal;
     std::set<uint256> setRefundWithdrawalID;
-    std::vector<BitName> vBitName;
+    std::map<uint256, BitName> mapBitName; // keyed by bitname ID
     std::vector<BitNameReservation> vBitNameReservation;
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
@@ -2331,9 +2361,10 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             control.Add(vChecks);
         }
 
-        // New asset created - set asset ID # and update BitNameDB
         uint256 nNewAssetID = uint256();
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+            // New asset created - set asset ID # and update BitNameDB
+            
             if (tx.vout.size() < 1) {
                 return state.DoS(100, error("ConnectBlock(): Invalid BitName reservation/registration - vout too small"),
                                  REJECT_INVALID, "bad-asset-vout-small");
@@ -2351,14 +2382,18 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 BitName bitname;
                 bitname.nID = nBitNameID;
                 bitname.strName = tx.name;
-                bitname.commitment = tx.commitment;
-                bitname.fIn4 = tx.fIn4;
-                if (bitname.fIn4) {
-                    bitname.in4 = tx.in4.s_addr;
+                bitname.commitment.push_front(tx.commitment);
+                boost::optional<in_addr_t> in4 =
+                    // workaround for false positive with -Wmaybe-uninitialized
+                    // https://www.boost.org/doc/libs/1_81_0/libs/optional/doc/html/boost_optional/tutorial/gotchas/false_positive_with__wmaybe_uninitialized.html
+                    boost::make_optional<in_addr_t>(false, 0);
+                if (tx.fIn4) {
+                    in4 = tx.in4.s_addr;
                 }
-                bitname.txid = tx.GetHash();
+                bitname.in4.push_front(in4);
+                bitname.txid.push_front(tx.GetHash());
 
-                vBitName.push_back(bitname);
+                mapBitName.insert({bitname.nID, bitname});
 
                 // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
                 nNewAssetID = bitname.nID;
@@ -2384,6 +2419,36 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 // FIXME: is this correct?
                 nNewAssetID = bitNameReservation.nID;
             }
+        } else if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+            if (tx.vout.size() < 1) {
+                return state.DoS(100, error("ConnectBlock(): Invalid BitName update - vout too small"),
+                                 REJECT_INVALID, "bad-asset-vout-small");
+            }
+            // get the bitname ID
+            const COutPoint& lastOutpoint = tx.vin.back().prevout;
+            const Coin& lastInputCoin = view.AccessCoin(lastOutpoint);
+
+            // get the bitname to update
+            BitName bitname;
+            auto search = mapBitName.find(lastInputCoin.nAssetID);
+            if (search != mapBitName.end()) {
+                bitname = search->second;
+            } else if (!pbitnametree->GetBitName(lastInputCoin.nAssetID, bitname)) {
+                return state.DoS(100, error("ConnectBlock(): Invalid BitName update - bitname not found"),
+                        REJECT_INVALID, "bad-update-bitname-not-found");
+            }
+
+            // update BitName fields
+            if (tx.fCommitment) {
+                bitname.commitment.push_front(tx.commitment);
+            }
+            if (tx.fIn4) {
+                bitname.in4.push_front(tx.in4.s_addr);
+            }
+            bitname.txid.push_front(tx.GetHash());
+
+            mapBitName.insert({bitname.nID, bitname});
+
         }
 
         CTxUndo undoDummy;
@@ -2401,6 +2466,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         data.nBitNameN = nBitNameN;
         data.nAssetID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
         data.txid = tx.GetHash();
+        // FIXME: is this correct?
         if (connectTrace && (amountAssetIn > 0 || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION))
             connectTrace->SetBitNameData(tx.GetHash(), data);
     }
@@ -2708,7 +2774,10 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     }
 
     // Write asset objects to db
-    if (vBitName.size()) {
+    if (mapBitName.size()) {
+        std::vector<BitName> vBitName;
+        for (const auto &bitname : mapBitName)
+            vBitName.push_back(bitname.second);
         if (!pbitnametree->WriteBitNames(vBitName))
             return state.Error("Failed to write BitName index!");
     }

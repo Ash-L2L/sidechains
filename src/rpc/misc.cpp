@@ -825,14 +825,17 @@ UniValue listbitnames(const JSONRPCRequest& request)
         UniValue obj(UniValue::VOBJ);
         obj.pushKV("id", b.nID.ToString());
         obj.pushKV("name", b.strName);
-        obj.pushKV("commitment", b.commitment.ToString());
-        obj.pushKV("txid", b.txid.ToString());
-        if (b.fIn4) {
+        boost::optional<uint256> commitment = b.commitment.front();
+        if (commitment) {
+            obj.pushKV("commitment", (*commitment).ToString());
+        }
+        boost::optional<in_addr_t> opt_in4 = b.in4.front();
+        if (opt_in4) {
             struct in_addr in4;
-            in4.s_addr = b.in4;
-
+            in4.s_addr = *opt_in4;
             obj.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
         }
+        obj.pushKV("txid", b.txid.front().ToString());
         result.push_back(obj);
     }
 
@@ -867,14 +870,17 @@ UniValue resolvebitname(const JSONRPCRequest& request)
     UniValue result(UniValue::VOBJ);
     result.pushKV("id", bitname.nID.ToString());
     result.pushKV("name", bitname.strName);
-    result.pushKV("commitment", bitname.commitment.ToString());
-    result.pushKV("txid", bitname.txid.ToString());
-    if (bitname.fIn4) {
-        struct in_addr in4;
-        in4.s_addr = bitname.in4;
-
-        result.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
-    }
+    boost::optional<uint256> commitment = bitname.commitment.front();
+        if (commitment) {
+            result.pushKV("commitment", (*commitment).ToString());
+        }
+        boost::optional<in_addr_t> opt_in4 = bitname.in4.front();
+        if (opt_in4) {
+            struct in_addr in4;
+            in4.s_addr = *opt_in4;
+            result.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
+        }
+        result.pushKV("txid", bitname.txid.front().ToString());
 
     return result;
 }

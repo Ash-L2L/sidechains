@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <deque>
 #include <ios>
 #include <limits>
 #include <map>
@@ -22,6 +23,7 @@
 #include <vector>
 
 #include <prevector.h>
+#include <boost/optional.hpp>
 
 static const unsigned int MAX_SIZE = 0x02000000;
 
@@ -498,10 +500,22 @@ template<typename Stream, typename T, typename A, typename V> void Unserialize_i
 template<typename Stream, typename T, typename A> inline void Unserialize(Stream& is, std::vector<T, A>& v);
 
 /**
+ * optional
+ */
+template<typename Stream, typename T> void Serialize(Stream& os, const boost::optional<T>& item);
+template<typename Stream, typename T> void Unserialize(Stream& is, boost::optional<T>& item);
+
+/**
  * pair
  */
 template<typename Stream, typename K, typename T> void Serialize(Stream& os, const std::pair<K, T>& item);
 template<typename Stream, typename K, typename T> void Unserialize(Stream& is, std::pair<K, T>& item);
+
+/**
+ * deque
+ */
+template<typename Stream, typename T, typename A> void Serialize(Stream& os, const std::deque<T, A>& deque);
+template<typename Stream, typename T, typename A> void Unserialize(Stream& is, std::deque<T, A>& deque);
 
 /**
  * map
@@ -707,6 +721,36 @@ inline void Unserialize(Stream& is, std::vector<T, A>& v)
 
 
 /**
+ * optional
+ */
+template<typename Stream, typename T>
+void Serialize(Stream& os, const boost::optional<T>& item)
+{
+    if (item) {
+        Serialize(os, true);
+        Serialize(os, *item);
+    } else {
+        Serialize(os, false);
+    }
+}
+
+template<typename Stream, typename T>
+void Unserialize(Stream& is, boost::optional<T>& item)
+{
+    bool exists;
+    Unserialize(is, exists);
+    if (exists) {
+        T value;
+        Unserialize(is, value);
+        item = value;
+    } else {
+        item = boost::none;
+    }
+}
+
+
+
+/**
  * pair
  */
 template<typename Stream, typename K, typename T>
@@ -723,6 +767,30 @@ void Unserialize(Stream& is, std::pair<K, T>& item)
     Unserialize(is, item.second);
 }
 
+
+/**
+ * deque
+ */
+template<typename Stream, typename T, typename A>
+void Serialize(Stream& os, const std::deque<T, A>& d)
+{
+    WriteCompactSize(os, d.size());
+    for (const auto& item : d)
+        Serialize(os, item);
+}
+
+template<typename Stream, typename T, typename A>
+void Unserialize(Stream& is, std::deque<T, A>& d)
+{
+    d.clear();
+    unsigned int nSize = ReadCompactSize(is);
+    for (unsigned int i = 0; i < nSize; i++)
+    {
+        T item;
+        Unserialize(is, item);
+        d.push_back(item);
+    }
+}
 
 
 /**

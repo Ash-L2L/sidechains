@@ -169,18 +169,27 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
 
-    bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+    bool fCreateBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+    bool fUpdateBitName = tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION;
+    bool fBitName = fCreateBitName || fUpdateBitName;
 
     // Create BitName transactions must have at least 1 output
-    if (fBitName && tx.vout.size() < 1)
+    if (fCreateBitName && tx.vout.size() < 1)
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-create-bitname-vout-size");
+    // Update BitName transactions must have at least 1 output
+    if (fUpdateBitName && tx.vout.size() < 1)
+        return state.DoS(10, false, REJECT_INVALID, "bad-txns-update-bitname-vout-size");
+    
+    // Update BitName transactions must update at least 1 field
+    if (fUpdateBitName && !(tx.fCommitment || tx.fIn4))
+        return state.DoS(10, false, REJECT_INVALID, "bad-txns-update-bitname-no-updates");
 
     // Check for negative or overflow output values
     CAmount nValueOut = 0;
     std::vector<CTxOut>::const_iterator it;
     it = tx.vout.begin();
     if (fBitName) {
-        // The first output from a create bitname tx must have a value of 1
+        // The first output from a create/update bitname tx must have a value of 1
         if (it->nValue > 1)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-vout-toolarge");
         else if (it->nValue < 0)
@@ -231,13 +240,15 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                          strprintf("%s: inputs missing/spent", __func__));
     }
 
+    bool fCreateBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+    bool fUpdateBitName = tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION;
+
     // in a create bitname tx, if the 'name' field is set (registration), then
     // there must exist a bitname reservation input at the last index of the
     // inputs, for which the reserved hashedName must be equal to the hash of
     // txinputshash+commitment+name, where the txinputshash is tha hash of tx
     // inputs for the tx that created the bitname reservation.
-    bool fBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
-    if (fBitName) {
+    if (fCreateBitName) {
         if (!tx.name.empty()) {
             const COutPoint& lastOutpoint = tx.vin.back().prevout;
             const Coin& lastInputCoin = inputs.AccessCoin(lastOutpoint);
@@ -257,6 +268,16 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
             if (commitment != hash_result)
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-wrong-commitment");
         }
+    }
+
+    // in an update bitname tx, there must exist a bitname input
+    // at the last index of the inputs
+    if (fUpdateBitName) {
+        const COutPoint& lastOutpoint = tx.vin.back().prevout;
+        const Coin& lastInputCoin = inputs.AccessCoin(lastOutpoint);
+        // last input coin must be a bitname
+        if (!lastInputCoin.fBitName)
+            return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-missing-bitname");
     }
 
     uint256 nAssetIDFound = uint256();

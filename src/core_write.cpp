@@ -212,9 +212,16 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
         entry.pushKV("commitment", tx.commitment.ToString());
         entry.pushKV("name", tx.name);
         entry.pushKV("sok", tx.sok.ToString());
-        entry.pushKV("fIn4", tx.fIn4);
-        // FIXME: do not include if not present
-        entry.pushKV("ip4_addr", std::string(inet_ntoa(tx.in4)));
+        if (tx.fIn4) {
+            entry.pushKV("ip4_addr", std::string(inet_ntoa(tx.in4)));
+        }
+    } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
+        if (tx.fCommitment) {
+            entry.pushKV("commitment", tx.commitment.ToString());
+        }
+        if (tx.fIn4) {
+            entry.pushKV("ip4_addr", std::string(inet_ntoa(tx.in4)));
+        }
     }
 
     if (include_hex) {

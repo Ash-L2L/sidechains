@@ -13,9 +13,12 @@
 #include <serialize.h>
 #include <uint256.h>
 
+#include <deque>
 #include <limits.h>
 #include <string>
 #include <vector>
+
+#include <boost/optional.hpp>
 
 //
 //
@@ -123,11 +126,16 @@ struct BitNameObj {
 struct BitName : public BitNameObj {
     uint256 nID;
     std::string strName;
-    uint256 commitment;
-    bool fIn4; // is in4 set?
+    // Previous commitments are stored for rollbacks.
+    // The first element is the current commitment.
+    std::deque<boost::optional<uint256>> commitment {};
+    // Previous in_addrs are stored for rollbacks.
+    // The first element is the current in_addr.
     // FIXME: use in_addr instead
-    in_addr_t in4;
-    uint256 txid;
+    std::deque<boost::optional<in_addr_t>> in4 {};
+    // Previous txids are stored for rollbacks.
+    // The first element is the current txid.
+    std::deque<uint256> txid {};
 
     ADD_SERIALIZE_METHODS
 
@@ -136,7 +144,6 @@ struct BitName : public BitNameObj {
         READWRITE(nID);
         READWRITE(strName);
         READWRITE(commitment);
-        READWRITE(fIn4);
         READWRITE(in4);
         READWRITE(txid);
     }

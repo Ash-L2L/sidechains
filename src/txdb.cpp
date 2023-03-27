@@ -598,6 +598,12 @@ bool BitNameDB::WriteBitNames(const std::vector<BitName>& vBitName)
     return WriteBatch(batch, true);
 }
 
+bool BitNameDB::WriteBitName(const BitName& bitname)
+{
+    std::vector<BitName> vBitName{ bitname };
+    return WriteBitNames(vBitName);
+}
+
 std::vector<BitName> BitNameDB::GetBitNames()
 {
     std::ostringstream ss;

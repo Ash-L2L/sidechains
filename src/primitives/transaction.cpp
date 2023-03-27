@@ -77,14 +77,15 @@ uint256 CTransaction::GetWitnessHash() const
 
 /* For backward compatibility, the hash is initialized to 0. TODO: remove the need for this default constructor entirely. */
 CTransaction::CTransaction() : vin(), vout(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), commitment(), name(""), sok(), fIn4(false), in4({ .s_addr = 0 }), hash() {}
-CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), commitment(tx.commitment), name(tx.name), sok(tx.sok), fIn4(tx.fIn4), in4(tx.in4), hash(ComputeHash()) {}
-CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), commitment(tx.commitment), name(tx.name), sok(tx.sok), fIn4(tx.fIn4), in4(tx.in4), hash(ComputeHash()) {}
+CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name(tx.name), sok(tx.sok), in4(tx.in4), hash(ComputeHash()) {}
+CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name(tx.name), sok(tx.sok), in4(tx.in4), hash(ComputeHash()) {}
 
 CAmount CTransaction::GetValueOut() const
 {
-    bool fBitName = nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+    bool fBitName = nVersion == TRANSACTION_BITNAME_CREATE_VERSION
+                 || nVersion == TRANSACTION_BITNAME_UPDATE_VERSION;
 
-    // Skip the BitName output of a BitName creation
+    // Skip the BitName output of a BitName creation or update
     std::vector<CTxOut>::const_iterator it;
     if (fBitName && vout.size() >= 1)
         it = vout.begin() + 1;

@@ -180,6 +180,7 @@ class BitNameDB : public CDBWrapper
 {
 public:
     BitNameDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+    bool WriteBitName(const BitName& bitname);
     bool WriteBitNames(const std::vector<BitName>& vBitName);
 
     std::vector<BitName> GetBitNames();
