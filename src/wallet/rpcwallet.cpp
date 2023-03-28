@@ -3910,6 +3910,93 @@ UniValue registerbitname(const JSONRPCRequest& request)
     return response;
 }
 
+UniValue updatebitname(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    // TODO: make commitment, ipv4 optional
+    if (request.fHelp || request.params.size() != 5)
+        throw std::runtime_error(
+            "updatebitname\n"
+            "\nArguments:\n"
+            "1. \"name\"               (string, required)\n"
+            "3. \"commitment\"         (string, required)\n"
+            "4. \"ipv4\"               (string, required)\n"
+            "5. \"fee\"                (numeric or string, required)\n"
+            "6. \"address\"            (string, required)\n"
+            "\nUpdate a BitName\n"
+            + HelpRequiringPassphrase(pwallet) +
+            "\nResult (array):\n"
+            "\"txid\"           (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("updatebitname", "")
+            + HelpExampleRpc("updatebitname", "")
+        );
+
+    ObserveSafeMode();
+
+    // TODO check sizes
+    // Name
+    std::string strName = request.params[0].get_str();
+    if (strName.empty()) {
+        std::string strError = "Invalid name";
+        LogPrintf("%s: %s\n", __func__, strError);
+        throw JSONRPCError(RPC_MISC_ERROR, strError);
+    }
+    // commitment
+    uint256 commitment = uint256S(request.params[1].get_str());
+    if (commitment.IsNull()) {
+        std::string strError = "Invalid - missing commitment";
+        LogPrintf("%s: %s\n", __func__, strError);
+        throw JSONRPCError(RPC_MISC_ERROR, strError);
+    }
+    // IPv4
+    struct in_addr in4;
+    std::string strIn4 = request.params[2].get_str();
+    if (strIn4.empty()) {
+        std::string strError = "Invalid - missing IPv4 address";
+        LogPrintf("%s: %s\n", __func__, strError);
+        throw JSONRPCError(RPC_MISC_ERROR, strError);
+    }
+    if (inet_pton(AF_INET, strIn4.c_str(), &in4) != 1) {
+        std::string strError = "Error parsing IPv4 address string: " + strIn4;
+        LogPrintf("%s: %s\n", __func__, strError);
+        throw JSONRPCError(RPC_MISC_ERROR, strError);
+    }
+    // Fee
+    CAmount nFee = AmountFromValue(request.params[3]);
+    if (nFee <= 0) {
+        std::string strError = "Invalid fee amount";
+        LogPrintf("%s: %s\n", __func__, strError);
+        throw JSONRPCError(RPC_MISC_ERROR, strError);
+    }
+    // Destination address
+    CTxDestination dest = DecodeDestination(request.params[4].get_str());
+    if (!IsValidDestination(dest)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid destination address");
+    }
+
+    EnsureWalletIsUnlocked(pwallet);
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    CTransactionRef tx;
+    std::string strFail = "";
+    if (!pwallet->UpdateBitName(tx, strFail, strName, commitment, in4, nFee, request.params[4].get_str()))
+    {
+        LogPrintf("%s: %s\n", __func__, strFail);
+        throw JSONRPCError(RPC_MISC_ERROR, strFail);
+    }
+
+    UniValue response(UniValue::VOBJ);
+    response.pushKV("txid", tx->GetHash().ToString());
+    return response;
+}
+
 UniValue listmybitnamereservations(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -4457,6 +4544,7 @@ static const CRPCCommand commands[] =
 
     { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "salt", "nfee", "dest"} },
     { "BitNames",          "registerbitname",                  &registerbitname,                  {"name", "sok", "commitment", "ipv4", "nfee", "dest"} },
+    { "BitNames",          "updatebitname",                    &updatebitname,                    {"name", "commitment", "ipv4", "nfee", "dest"} },
     { "BitNames",          "listmybitnamereservations",        &listmybitnamereservations,       {} },
     { "BitNames",          "listmybitnames",                   &listmybitnames,                  {} },
     { "BitNames",          "transferbitname",                  &transferbitname,                 {"txid", "destination", "fee"} },

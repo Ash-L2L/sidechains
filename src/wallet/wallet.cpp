@@ -2385,7 +2385,8 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
         if (!txid.IsNull() && wtxid != txid)
             continue;
 
-        if (wtx->tx->nVersion != TRANSACTION_BITNAME_CREATE_VERSION)
+        if (wtx->tx->nVersion != TRANSACTION_BITNAME_CREATE_VERSION
+            && wtx->tx->nVersion != TRANSACTION_BITNAME_UPDATE_VERSION)
             continue;
 
         if (!CheckFinalTx(*wtx->tx))
@@ -2402,7 +2403,8 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
 
         // in a registration, the `name` tx field is set, and the
         // last input is the reservation
-        if (wtx->tx->name.empty())
+        if (wtx->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION
+            && wtx->tx->name.empty())
             continue;
         if (wtx->tx->vin.empty()) {
             continue;
@@ -3495,6 +3497,167 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
         strFail = "Failed to commit BitName registration transaction! Reject reason: " + FormatStateMessage(state) + "\n";
+        return false;
+    }
+    tx = walletTx.tx;
+
+    return true;
+}
+
+bool CWallet::UpdateBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment, const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable)
+{
+    strFail = "Unknown error!";
+
+    if (vpwallets.empty()) {
+        strFail = "No active wallet!\n";
+        return false;
+    }
+
+    CTxDestination dest = DecodeDestination(strDest);
+    if (!fImmutable && !IsValidDestination(dest)) {
+        strFail = "Invalid destination";
+        return false;
+    }
+
+    std::vector<COutput> vBitNames;
+    AvailableBitNames(vBitNames);
+    boost::optional<COutput&> bitname;
+
+    for (COutput& output : vBitNames) {
+        if (output.tx->strName == strName) {
+            bitname = output;
+            break;
+        }
+    }
+    if (!bitname) {
+        strFail = "Could not find bitname!\n";
+        return false;
+    }
+
+    CMutableTransaction mtx;
+    mtx.nVersion = TRANSACTION_BITNAME_UPDATE_VERSION;
+
+    // BitName info
+    mtx.fCommitment = true;
+    mtx.fIn4 = true;
+    mtx.commitment = commitment;
+    mtx.in4 = in4;
+
+    // bitname output
+    if (fImmutable)
+        mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
+    else
+        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
+
+    BlockUntilSyncedToCurrentChain();
+
+    LOCK2(cs_main, vpwallets[0]->cs_wallet);
+
+    // Select coins to cover fee
+    std::vector<COutput> vCoins;
+    AvailableCoins(vCoins, true /* fOnlySafe */);
+    std::set<CInputCoin> setCoins;
+    CAmount nAmountRet = CAmount(0);
+    if (!SelectCoins(vCoins, nFee, setCoins, nAmountRet)) {
+        strFail = "Could not collect enough coins to cover fee!\n";
+        return false;
+    }
+    std::vector<CInputCoin> vInputCoins(setCoins.begin(), setCoins.end());
+
+    // Handle change if there is any
+    const CAmount nChange = nAmountRet - nFee;
+    CReserveKey reserveKey(vpwallets[0]);
+    if (nChange > 0) {
+        CScript scriptChange;
+
+        // Reserve a new key pair from key pool
+        CPubKey vchPubKey;
+        if (!reserveKey.GetReservedKey(vchPubKey))
+        {
+            strFail = "Keypool ran out, please call keypoolrefill first!\n";
+            return false;
+        }
+        scriptChange = GetScriptForDestination(vchPubKey.GetID());
+
+        CTxOut out(nChange, scriptChange);
+        if (!IsDust(out, ::dustRelayFee))
+            mtx.vout.push_back(out);
+    }
+
+    // Add Bitcoin inputs
+    for (const auto& coin : vInputCoins)
+        mtx.vin.push_back(CTxIn(coin.outpoint.hash, coin.outpoint.n, CScript()));
+
+    // Add BitName input
+    CInputCoin bitname_coin = CInputCoin((*bitname).tx, (*bitname).i);
+    COutPoint bitname_outpoint = bitname_coin.outpoint;
+    mtx.vin.push_back(CTxIn(bitname_outpoint.hash, bitname_outpoint.n, CScript()));
+    vInputCoins.push_back(bitname_coin);
+
+    // Dummy sign the transaction to calculate minimum fee
+    std::vector<CInputCoin> vInputCoinsTemp = vInputCoins;
+    if (!DummySignTx(mtx, vInputCoinsTemp)) {
+        strFail = "Dummy signing transaction for required fee calculation failed!";
+        return false;
+    }
+
+    // Get transaction size with dummy signatures
+    unsigned int nBytes = GetVirtualTransactionSize(mtx);
+
+    // Calculate fee
+    CCoinControl coinControl;
+    FeeCalculation feeCalc;
+    CAmount nFeeNeeded = GetMinimumFee(nBytes, coinControl, ::mempool, ::feeEstimator, &feeCalc);
+
+    // Check that the fee is valid for relay
+    if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes)) {
+        strFail = "Transaction too large for fee policy";
+        return false;
+    }
+
+    // Check the user set fee
+    if (nFee < nFeeNeeded) {
+        strFail = "The fee you have set is too small!";
+        return false;
+    }
+
+    // Remove dummy signatures
+    for (auto& vin : mtx.vin) {
+        vin.scriptSig = CScript();
+        vin.scriptWitness.SetNull();
+    }
+
+    // Sign the inputs
+    const CTransaction txToSign = mtx;
+    int nIn = 0;
+    for (const auto& coin : vInputCoins) {
+        const CScript& scriptPubKey = coin.txout.scriptPubKey;
+        SignatureData sigdata;
+
+        if (!ProduceSignature(TransactionSignatureCreator(this, &txToSign, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata))
+        {
+            strFail = "Signing inputs failed!\n";
+            return false;
+        } else {
+            UpdateTransaction(mtx, nIn, sigdata);
+        }
+
+        nIn++;
+    }
+
+    // Broadcast transaction
+    CWalletTx walletTx;
+    walletTx.fTimeReceivedIsTxTime = true;
+    walletTx.fFromMe = true;
+    walletTx.BindWallet(this);
+
+    walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
+    walletTx.strName = strName;
+    walletTx.nControlN = 0;
+
+    CValidationState state;
+    if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
+        strFail = "Failed to commit BitName update transaction! Reject reason: " + FormatStateMessage(state) + "\n";
         return false;
     }
     tx = walletTx.tx;
