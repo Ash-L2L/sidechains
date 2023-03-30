@@ -2419,7 +2419,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 // FIXME: is this correct?
                 nNewAssetID = bitNameReservation.nID;
             }
-        } else if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
             if (tx.vout.size() < 1) {
                 return state.DoS(100, error("ConnectBlock(): Invalid BitName update - vout too small"),
                                  REJECT_INVALID, "bad-asset-vout-small");

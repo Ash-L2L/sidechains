@@ -97,9 +97,14 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint2
         for (size_t i = 0; i < tx.vout.size(); ++i) {
             bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
             bool fAsset = amountAssetIn > amountAssetOut;
-            bool fBitName = nBitNameN >= 0 && (int)i == nBitNameN;
+            bool fBitName =
+                (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION
+                || tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION)
+                && i == 0;
             uint256 nID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fAsset, fBitName, fAsset ? nID : uint256()), overwrite);
+            nID = fBitName ? nID : uint256();
+            uint256 commitment = fBitName ? tx.commitment : uint256();
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false, fBitName, nID, commitment), overwrite);
             if (fAsset)
                 amountAssetOut += tx.vout[i].nValue;
         }

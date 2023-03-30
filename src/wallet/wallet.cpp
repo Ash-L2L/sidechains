@@ -3368,10 +3368,13 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
 
     LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
-    // calculate expected reservation commitment
+    // calculate asset ID and expected reservation commitment
+    uint256 nAssetID;
     uint256 reservation_commitment;
     const unsigned char* name_ptr =
         reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &nAssetID);
     CHash256().Write(name_ptr, strName.size())
               .Write(sok.begin(), sok.size())
               .Finalize((unsigned char*) &reservation_commitment);
@@ -3493,6 +3496,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
     walletTx.strName = strName;
     walletTx.nControlN = 0;
+    walletTx.nAssetID = nAssetID; 
 
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
@@ -3654,6 +3658,14 @@ bool CWallet::UpdateBitName(CTransactionRef& tx, std::string& strFail, const std
     walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
     walletTx.strName = strName;
     walletTx.nControlN = 0;
+
+    // calculate asset ID
+    uint256 nAssetID;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &nAssetID);
+    walletTx.nAssetID = nAssetID;
 
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
