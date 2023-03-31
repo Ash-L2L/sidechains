@@ -180,13 +180,7 @@ void  TxDetails::SetTransaction(const CMutableTransaction& mtx)
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
         QTreeWidgetItem *subItem = new QTreeWidgetItem();
         subItem->setText(0, "BitName Creation");
-        QString str = "Ticker: " + QString::fromStdString(tx.ticker) + "\n";
-        str += "Headline: " + QString::fromStdString(tx.headline) + "\n";
-        str += "Payload: " + QString::fromStdString(tx.payload.ToString()) + "\n";
-
-        int64_t nSupply = tx.vout.size() >= 2 ? tx.vout[1].nValue : 0;
-
-        str += "Supply: " + QString::number(nSupply) + "\n";
+        QString str = "Name: " + QString::fromStdString(tx.name) + "\n";
 
         subItem->setText(1, str);
         AddTreeItem(INDEX_BITNAMES, subItem);
