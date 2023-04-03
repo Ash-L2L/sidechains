@@ -339,39 +339,39 @@ void BitcoinGUI::createActions()
     historyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
     tabGroup->addAction(historyAction);
 
-    activityAction = new QAction(platformStyle->SingleColorIcon(":/icons/tx_inout"), tr("&Activity"), this);
+    activityAction = new QAction(platformStyle->SingleColorIcon(":/icons/activity"), tr("&Activity"), this);
     activityAction->setStatusTip(tr("Activity"));
     activityAction->setToolTip(activityAction->statusTip());
     activityAction->setCheckable(true);
-    activityAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
+    activityAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
     tabGroup->addAction(activityAction);
 
-    browseAction = new QAction(platformStyle->SingleColorIcon(":/icons/tx_inout"), tr("&Browse"), this);
+    browseAction = new QAction(platformStyle->SingleColorIcon(":/icons/browse"), tr("&Browse"), this);
     browseAction->setStatusTip(tr("Browse"));
     browseAction->setToolTip(browseAction->statusTip());
     browseAction->setCheckable(true);
-    browseAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
+    browseAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
     tabGroup->addAction(browseAction);
 
-    contactsAction = new QAction(platformStyle->SingleColorIcon(":/icons/tx_inout"), tr("&Contacts"), this);
+    contactsAction = new QAction(platformStyle->SingleColorIcon(":/icons/address-book"), tr("&Contacts"), this);
     contactsAction->setStatusTip(tr("Contacts"));
     contactsAction->setToolTip(contactsAction->statusTip());
     contactsAction->setCheckable(true);
-    contactsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
+    contactsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
     tabGroup->addAction(contactsAction);
 
-    paymailAction = new QAction(platformStyle->SingleColorIcon(":/icons/tx_inout"), tr("&Paymail"), this);
+    paymailAction = new QAction(platformStyle->SingleColorIcon(":/icons/paymail"), tr("&Paymail"), this);
     paymailAction->setStatusTip(tr("Paymail"));
     paymailAction->setToolTip(paymailAction->statusTip());
     paymailAction->setCheckable(true);
-    paymailAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
+    paymailAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_9));
     tabGroup->addAction(paymailAction);
 
-    verifyAction = new QAction(platformStyle->SingleColorIcon(":/icons/tx_inout"), tr("&Verify"), this);
+    verifyAction = new QAction(platformStyle->SingleColorIcon(":/icons/verifyname"), tr("&Verify"), this);
     verifyAction->setStatusTip(tr("Verify"));
     verifyAction->setToolTip(verifyAction->statusTip());
     verifyAction->setCheckable(true);
-    verifyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
+    verifyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_0));
     tabGroup->addAction(verifyAction);
 
 #ifdef ENABLE_WALLET
