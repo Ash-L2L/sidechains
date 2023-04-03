@@ -7,6 +7,8 @@
 
 #include <QWidget>
 
+class PlatformStyle;
+
 namespace Ui {
 class BrowsePage;
 }
@@ -16,11 +18,13 @@ class BrowsePage : public QWidget
     Q_OBJECT
 
 public:
-    explicit BrowsePage(QWidget *parent = nullptr);
+    explicit BrowsePage(const PlatformStyle *platformStyle, QWidget *parent = nullptr);
     ~BrowsePage();
 
 private:
     Ui::BrowsePage *ui;
+
+    const PlatformStyle *platformStyle;
 };
 
 #endif // BROWSEPAGE_H

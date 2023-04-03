@@ -5,9 +5,12 @@
 #include <qt/browsepage.h>
 #include <qt/forms/ui_browsepage.h>
 
-BrowsePage::BrowsePage(QWidget *parent) :
+#include <qt/platformstyle.h>
+
+BrowsePage::BrowsePage(const PlatformStyle *_platformStyle, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::BrowsePage)
+    ui(new Ui::BrowsePage),
+    platformStyle(_platformStyle)
 {
     ui->setupUi(this);
 }

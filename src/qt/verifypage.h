@@ -7,6 +7,8 @@
 
 #include <QWidget>
 
+class PlatformStyle;
+
 namespace Ui {
 class VerifyPage;
 }
@@ -16,11 +18,13 @@ class VerifyPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit VerifyPage(QWidget *parent = nullptr);
+    explicit VerifyPage(const PlatformStyle *platformStyle, QWidget *parent = nullptr);
     ~VerifyPage();
 
 private:
     Ui::VerifyPage *ui;
+
+    const PlatformStyle *platformStyle;
 };
 
 #endif // VERIFYPAGE_H

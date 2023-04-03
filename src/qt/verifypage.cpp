@@ -5,9 +5,10 @@
 #include <qt/verifypage.h>
 #include <qt/forms/ui_verifypage.h>
 
-VerifyPage::VerifyPage(QWidget *parent) :
+VerifyPage::VerifyPage(const PlatformStyle *_platformStyle, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::VerifyPage)
+    ui(new Ui::VerifyPage),
+    platformStyle(_platformStyle)
 {
     ui->setupUi(this);
 }

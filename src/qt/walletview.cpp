@@ -19,6 +19,11 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/transactionview.h>
 #include <qt/walletmodel.h>
+#include <qt/activitypage.h>
+#include <qt/browsepage.h>
+#include <qt/contactspage.h>
+#include <qt/paymailpage.h>
+#include <qt/verifypage.h>
 
 #include <ui_interface.h>
 
@@ -56,11 +61,22 @@ WalletView::WalletView(const PlatformStyle *_platformStyle, QWidget *parent):
 
     sidechainPage = new SidechainPage(platformStyle, this);
 
+    activityPage = new ActivityPage(platformStyle, this);
+    browsePage = new BrowsePage(platformStyle, this);
+    contactsPage = new ContactsPage(platformStyle, this);
+    paymailPage = new PaymailPage(platformStyle, this);
+    verifyPage = new VerifyPage(platformStyle, this);
+
     addWidget(sidechainPage);
     addWidget(overviewPage);
     addWidget(transactionsPage);
     addWidget(receiveCoinsPage);
     addWidget(sendCoinsPage);
+    addWidget(activityPage);
+    addWidget(browsePage);
+    addWidget(contactsPage);
+    addWidget(paymailPage);
+    addWidget(verifyPage);
 
     // Clicking on a transaction on the overview pre-selects the transaction on the transaction history page
     connect(overviewPage, SIGNAL(transactionClicked(QModelIndex)), transactionView, SLOT(focusTransaction(QModelIndex)));
@@ -216,6 +232,31 @@ void WalletView::gotoVerifyMessageTab(QString addr)
 void WalletView::gotoSidechainPage()
 {
     setCurrentWidget(sidechainPage);
+}
+
+void WalletView::gotoActivityPage()
+{
+    setCurrentWidget(activityPage);
+}
+
+void WalletView::gotoBrowsePage()
+{
+    setCurrentWidget(browsePage);
+}
+
+void WalletView::gotoContactsPage()
+{
+    setCurrentWidget(contactsPage);
+}
+
+void WalletView::gotoPaymailPage()
+{
+    setCurrentWidget(paymailPage);
+}
+
+void WalletView::gotoVerifyPage()
+{
+    setCurrentWidget(verifyPage);
 }
 
 bool WalletView::handlePaymentRequest(const SendCoinsRecipient& recipient)

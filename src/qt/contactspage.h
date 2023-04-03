@@ -7,6 +7,8 @@
 
 #include <QWidget>
 
+class PlatformStyle;
+
 namespace Ui {
 class ContactsPage;
 }
@@ -16,11 +18,13 @@ class ContactsPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit ContactsPage(QWidget *parent = nullptr);
+    explicit ContactsPage(const PlatformStyle *platformStyle, QWidget *parent = nullptr);
     ~ContactsPage();
 
 private:
     Ui::ContactsPage *ui;
+
+    const PlatformStyle *platformStyle;
 };
 
 #endif // CONTACTSPAGE_H

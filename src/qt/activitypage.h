@@ -7,6 +7,8 @@
 
 #include <QWidget>
 
+class PlatformStyle;
+
 namespace Ui {
 class ActivityPage;
 }
@@ -16,11 +18,13 @@ class ActivityPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit ActivityPage(QWidget *parent = nullptr);
+    explicit ActivityPage(const PlatformStyle *platformStyle, QWidget *parent = nullptr);
     ~ActivityPage();
 
 private:
     Ui::ActivityPage *ui;
+
+    const PlatformStyle *platformStyle;
 };
 
 #endif // ACTIVITYPAGE_H

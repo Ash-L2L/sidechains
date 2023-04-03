@@ -116,6 +116,11 @@ private:
     QAction *sidechainAction;
     QAction *showHashCalcDialogAction;
     QAction *showBlockExplorerDialogAction;
+    QAction *activityAction;
+    QAction *browseAction;
+    QAction *contactsAction;
+    QAction *paymailAction;
+    QAction *verifyAction;
 
     QSystemTrayIcon *trayIcon;
     QMenu *trayIconMenu;
@@ -222,6 +227,17 @@ private Q_SLOTS:
     void showHashCalcDialog();
     /** Show block explorer dialog */
     void showBlockExplorerDialog();
+
+    /** Switch to activity page */
+    void gotoActivityPage();
+    /** Switch to browse page */
+    void gotoBrowsePage();
+    /** Switch to contacts page */
+    void gotoContactsPage();
+    /** Switch to paymail page */
+    void gotoPaymailPage();
+    /** Switch to verify page */
+    void gotoVerifyPage();
 
     /** Show open dialog */
     void openClicked();

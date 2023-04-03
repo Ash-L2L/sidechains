@@ -7,6 +7,8 @@
 
 #include <QWidget>
 
+class PlatformStyle;
+
 namespace Ui {
 class PaymailPage;
 }
@@ -16,11 +18,13 @@ class PaymailPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit PaymailPage(QWidget *parent = nullptr);
+    explicit PaymailPage(const PlatformStyle *platformStyle, QWidget *parent = nullptr);
     ~PaymailPage();
 
 private:
     Ui::PaymailPage *ui;
+
+    const PlatformStyle *platformStyle;
 };
 
 #endif // PAYMAILPAGE_H

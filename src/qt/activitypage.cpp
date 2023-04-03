@@ -5,9 +5,12 @@
 #include <qt/activitypage.h>
 #include <qt/forms/ui_activitypage.h>
 
-ActivityPage::ActivityPage(QWidget *parent) :
+#include <qt/platformstyle.h>
+
+ActivityPage::ActivityPage(const PlatformStyle *_platformStyle, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::ActivityPage)
+    ui(new Ui::ActivityPage),
+    platformStyle(_platformStyle)
 {
     ui->setupUi(this);
 }

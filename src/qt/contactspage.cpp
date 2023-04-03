@@ -5,9 +5,12 @@
 #include <qt/contactspage.h>
 #include <qt/forms/ui_contactspage.h>
 
-ContactsPage::ContactsPage(QWidget *parent) :
+#include <qt/platformstyle.h>
+
+ContactsPage::ContactsPage(const PlatformStyle *_platformStyle, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::ContactsPage)
+    ui(new Ui::ContactsPage),
+    platformStyle(_platformStyle)
 {
     ui->setupUi(this);
 }
