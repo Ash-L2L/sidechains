@@ -31,6 +31,10 @@ public:
             ::Serialize(s, (unsigned char)0);
         }
         ::Serialize(s, CTxOutCompressor(REF(txout->out)));
+        ::Serialize(s, txout->fBitNameReservation);
+        ::Serialize(s, txout->fBitName);
+        ::Serialize(s, txout->nAssetID);
+        ::Serialize(s, txout->commitment);
     }
 
     explicit TxInUndoSerializer(const Coin* coin) : txout(coin) {}
@@ -55,6 +59,10 @@ public:
             ::Unserialize(s, VARINT(nVersionDummy));
         }
         ::Unserialize(s, REF(CTxOutCompressor(REF(txout->out))));
+        ::Unserialize(s, txout->fBitNameReservation);
+        ::Unserialize(s, txout->fBitName);
+        ::Unserialize(s, txout->nAssetID);
+        ::Unserialize(s, txout->commitment);
     }
 
     explicit TxInUndoDeserializer(Coin* coin) : txout(coin) {}
