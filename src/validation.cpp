@@ -1713,12 +1713,30 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         // Undo BitNameDB updates
         if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
             // get the bitname ID
-            const COutPoint& lastOutpoint = tx.vin.back().prevout;
-            const Coin& lastInputCoin = view.AccessCoin(lastOutpoint);
-            
+            // FIXME: remove
+            //const COutPoint& lastOutpoint = tx.vin.back().prevout;
+            //const Coin& lastInputCoin = view.AccessCoin(lastOutpoint);
+            // use the tx undo to resolve the bitname ID
+            CTxUndo &txundo = blockUndo.vtxundo[i-1];
+            const Coin& lastInputCoin = txundo.vprevout.back();
+
             BitName bitname;
             if (!pbitnametree->GetBitName(lastInputCoin.nAssetID, bitname)) {
                 error("DisconnectBlock(): Failed to locate BitNameDB BitName!");
+                // FIXME: remove
+                if (!lastInputCoin.fBitName)
+                    std::cout << "Failed to get last input coin" << std::endl;
+                std::cout << "Missing BitName "
+                          << lastInputCoin.nAssetID.ToString()
+                          << std::endl;
+                std::vector<BitName> vBitnames = pbitnametree->GetBitNames();
+                for (const BitName& bn : vBitnames) {
+                    std::cout << "Found BitName "
+                              << bn.nID.ToString()
+                              << ": "
+                              << bn.strName
+                              << std::endl;
+                }
                 return DISCONNECT_FAILED;
             }
 
@@ -2467,7 +2485,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         data.nAssetID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
         data.txid = tx.GetHash();
         // FIXME: is this correct?
-        if (connectTrace && (amountAssetIn > 0 || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION))
+        if (connectTrace && (amountAssetIn > 0
+                            || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION
+                            || tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION))
             connectTrace->SetBitNameData(tx.GetHash(), data);
     }
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
