@@ -329,13 +329,13 @@ public:
     int64_t nOrderPos; //!< position in ordered transaction list
 
     CAmount amountAssetIn;
-    int nControlN;
+    int nControlN = -1;
     // asset ID created by the tx
-    uint256 nAssetID;
+    uint256 nAssetID = uint256();
     // bitname for reservations / registrations
-    std::string strName;
+    std::string strName = "";
     // salt for bitname reservations
-    uint256 sok;
+    uint256 sok = uint256();
 
     // memory only
     mutable bool fDebitCached;
