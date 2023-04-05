@@ -25,6 +25,9 @@ private:
     Ui::BrowsePage *ui;
 
     const PlatformStyle *platformStyle;
+
+private Q_SLOTS:
+    void on_lineEditSearch_returnPressed();
 };
 
 #endif // BROWSEPAGE_H

@@ -15,9 +15,9 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLineEdit" name="lineEditName">
+    <widget class="QLineEdit" name="lineEditSearch">
      <property name="placeholderText">
-      <string>Enter BitName</string>
+      <string notr="true">Enter BitName and press enter</string>
      </property>
     </widget>
    </item>
@@ -37,6 +37,11 @@
        </item>
        <item>
         <widget class="QTextBrowser" name="textBrowser">
+         <property name="font">
+          <font>
+           <family>Noto Mono</family>
+          </font>
+         </property>
          <property name="placeholderText">
           <string>If the entered BitName can be resolved then the data will be displayed here...</string>
          </property>
@@ -57,7 +62,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QTableWidget" name="tableWidget">
+        <widget class="QTableWidget" name="tableWidgetContacts">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
            <horstretch>0</horstretch>
