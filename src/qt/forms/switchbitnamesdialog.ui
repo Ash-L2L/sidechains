@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>PaymailPage</class>
- <widget class="QWidget" name="PaymailPage">
+ <class>SwitchBitNamesDialog</class>
+ <widget class="QDialog" name="SwitchBitNamesDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1882</width>
-    <height>1246</height>
+    <width>613</width>
+    <height>395</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>Change BitName</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -19,42 +19,62 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Balance:</string>
+        <string>Current BitName:</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>0.0000,0000</string>
+        <string>LayerTwoLabs.bitcoin</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="Line" name="line">
+      <spacer name="horizontalSpacer_2">
        <property name="orientation">
-        <enum>Qt::Vertical</enum>
+        <enum>Qt::Horizontal</enum>
        </property>
-      </widget>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>My BitNames:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="tableWidget"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QLabel" name="label_3">
+      <widget class="QPushButton" name="pushButtonRegister">
        <property name="text">
-        <string>Total received:</string>
+        <string>Register new BitName</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="label_4">
+      <widget class="QPushButton" name="pushButtonClaim">
        <property name="text">
-        <string>0.0000,0000</string>
+        <string>Claim ICANN BitName</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="Line" name="line_2">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
+      <widget class="QPushButton" name="pushButtonRecover">
+       <property name="text">
+        <string>Recover BitName</string>
        </property>
       </widget>
      </item>
@@ -71,23 +91,7 @@
        </property>
       </spacer>
      </item>
-     <item>
-      <widget class="QPushButton" name="pushButtonWrite">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Write Message</string>
-       </property>
-      </widget>
-     </item>
     </layout>
-   </item>
-   <item>
-    <widget class="QTableWidget" name="tableWidget"/>
    </item>
   </layout>
  </widget>

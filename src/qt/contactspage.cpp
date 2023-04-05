@@ -6,6 +6,8 @@
 #include <qt/forms/ui_contactspage.h>
 
 #include <qt/platformstyle.h>
+#include <qt/addcontactdialog.h>
+#include <qt/switchbitnamesdialog.h>
 
 ContactsPage::ContactsPage(const PlatformStyle *_platformStyle, QWidget *parent) :
     QWidget(parent),
@@ -18,4 +20,16 @@ ContactsPage::ContactsPage(const PlatformStyle *_platformStyle, QWidget *parent)
 ContactsPage::~ContactsPage()
 {
     delete ui;
+}
+
+void ContactsPage::on_pushButtonAdd_clicked()
+{
+    AddContactDialog dialog;
+    dialog.exec();
+}
+
+void ContactsPage::on_pushButtonSwitch_clicked()
+{
+    SwitchBitNamesDialog dialog;
+    dialog.exec();
 }

@@ -125,6 +125,13 @@ QT_FORMS_UI = \
   qt/forms/sidechainwithdrawalconfirmationdialog.ui \
   qt/forms/sidechainwithdrawalbundlehistorydialog.ui \
   qt/forms/signverifymessagedialog.ui \
+  qt/forms/addcontactdialog.ui \
+  qt/forms/claimbitnamedialog.ui \
+  qt/forms/recoverbitnamedialog.ui \
+  qt/forms/registerbitnamedialog.ui \
+  qt/forms/switchbitnamesdialog.ui \
+  qt/forms/writepaymaildialog.ui \
+  qt/forms/contactselectiondialog.ui \
   qt/forms/transactiondescdialog.ui \
   qt/forms/txdetails.ui \
   qt/forms/verifypage.ui
@@ -194,6 +201,13 @@ QT_MOC_CPP = \
   qt/moc_walletframe.cpp \
   qt/moc_walletmodel.cpp \
   qt/moc_walletview.cpp \
+  qt/moc_addcontactdialog.cpp \
+  qt/moc_contactselectiondialog.cpp \
+  qt/moc_claimbitnamedialog.cpp \
+  qt/moc_registerbitnamedialog.cpp \
+  qt/moc_switchbitnamesdialog.cpp \
+  qt/moc_recoverbitnamedialog.cpp \
+  qt/moc_writepaymaildialog.cpp \
   qt/moc_verifypage.cpp
 
 BITCOIN_MM = \
@@ -288,6 +302,13 @@ BITCOIN_QT_H = \
   qt/walletmodeltransaction.h \
   qt/walletview.h \
   qt/winshutdownmonitor.h \
+  qt/addcontactdialog.h \
+  qt/claimbitnamedialog.h \
+  qt/contactselectiondialog.h \
+  qt/recoverbitnamedialog.h \
+  qt/switchbitnamesdialog.h \
+  qt/addcontactsdialog.h \
+  qt/writepaymaildialog.h \
   qt/verifypage.h
 
 RES_ICONS = \
@@ -432,6 +453,13 @@ BITCOIN_QT_WALLET_CPP = \
   qt/walletmodel.cpp \
   qt/walletmodeltransaction.cpp \
   qt/walletview.cpp \
+  qt/addcontactdialog.cpp \
+  qt/contactselectiondialog.cpp \
+  qt/claimbitnamedialog.cpp \
+  qt/registerbitnamedialog.cpp \
+  qt/switchbitnamesdialog.cpp \
+  qt/recoverbitnamedialog.cpp \
+  qt/writepaymaildialog.cpp \
   qt/verifypage.cpp
 
 BITCOIN_QT_CPP = $(BITCOIN_QT_BASE_CPP)

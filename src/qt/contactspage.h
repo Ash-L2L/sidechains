@@ -25,6 +25,10 @@ private:
     Ui::ContactsPage *ui;
 
     const PlatformStyle *platformStyle;
+
+private Q_SLOTS:
+    void on_pushButtonSwitch_clicked();
+    void on_pushButtonAdd_clicked();
 };
 
 #endif // CONTACTSPAGE_H

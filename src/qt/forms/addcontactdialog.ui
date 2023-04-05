@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AddContactDialog</class>
+ <widget class="QDialog" name="AddContactDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Add Contact</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLineEdit" name="lineEdit">
+     <property name="placeholderText">
+      <string>Enter BitName</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTextBrowser" name="textBrowser"/>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="styleSheet">
+      <string notr="true">color:red</string>
+     </property>
+     <property name="text">
+      <string>BitName not found!</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pushButton">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Add</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
