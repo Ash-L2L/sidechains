@@ -33,6 +33,7 @@
 #include <atomic>
 
 class BMMCache;
+class BitNamesContacts;
 class BitNameDB;
 class BitNameReservationDB;
 class ConnectTrace;
@@ -243,6 +244,8 @@ static const char* const SIDECHAIN_TEST_SCRIPT_HEX = "76a914497f7d6b59281591c50b
 static const bool DEFAULT_VERIFY_WITHDRAWAL_BUNDLE_ACCEPT_BLOCK = true;
 
 extern BMMCache bmmCache;
+
+extern BitNamesContacts bitnamesContacts;
 
 extern std::mutex mainBlockCacheMutex;
 extern std::mutex mainBlockCacheReorgMutex;
@@ -548,6 +551,12 @@ void DumpBMMCache();
 
 /** Load the BMM caches from disk. */
 void LoadBMMCache();
+
+/** Dump BitName contacts to disk. */
+void DumpBitNamesContacts();
+
+/** Load BitName contactsfrom disk. */
+void LoadBitNamesContacts();
 
 /** Dump the cache of mainchain block hashes to disk */
 void DumpMainBlockCache();
