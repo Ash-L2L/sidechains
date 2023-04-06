@@ -9,6 +9,10 @@
 
 class PlatformStyle;
 
+QT_BEGIN_NAMESPACE
+class QTableWidgetItem;
+QT_END_NAMESPACE
+
 namespace Ui {
 class BrowsePage;
 }
@@ -26,8 +30,13 @@ private:
 
     const PlatformStyle *platformStyle;
 
+    void Update();
+
+    bool Resolve(const std::string& strName);
+
 private Q_SLOTS:
     void on_lineEditSearch_returnPressed();
+    void on_tableWidgetContacts_itemClicked(QTableWidgetItem* item);
 };
 
 #endif // BROWSEPAGE_H

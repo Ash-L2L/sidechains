@@ -8,7 +8,10 @@
 #include <qt/platformstyle.h>
 
 #include <QMessageBox>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 
+#include <bitnamescontacts.h>
 #include <sidechain.h>
 #include <txdb.h>
 #include <uint256.h>
@@ -24,6 +27,33 @@ BrowsePage::BrowsePage(const PlatformStyle *_platformStyle, QWidget *parent) :
     platformStyle(_platformStyle)
 {
     ui->setupUi(this);
+
+    // Table style
+
+#if QT_VERSION < 0x050000
+    ui->tableWidgetContacts->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents);
+    ui->tableWidgetContacts->verticalHeader()->setResizeMode(QHeaderView::ResizeToContents);
+#else
+    ui->tableWidgetContacts->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->tableWidgetContacts->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+#endif
+
+    // Hide vertical header
+    ui->tableWidgetContacts->verticalHeader()->setVisible(false);
+    // Left align the horizontal header text
+    ui->tableWidgetContacts->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
+    // Set horizontal scroll speed to per 3 pixels
+    ui->tableWidgetContacts->horizontalHeader()->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+    // Select entire row
+    ui->tableWidgetContacts->setSelectionBehavior(QAbstractItemView::SelectRows);
+    // Select only one row
+    ui->tableWidgetContacts->setSelectionMode(QAbstractItemView::SingleSelection);
+    // Disable word wrap
+    ui->tableWidgetContacts->setWordWrap(false);
+
+    ui->tableWidgetContacts->horizontalHeader()->setStretchLastSection(true);
+
+    Update();
 }
 
 BrowsePage::~BrowsePage()
@@ -33,8 +63,6 @@ BrowsePage::~BrowsePage()
 
 void BrowsePage::on_lineEditSearch_returnPressed()
 {
-    ui->textBrowser->clear();
-
     std::string strName = ui->lineEditSearch->text().toStdString();
     if (strName.empty()) {
         QMessageBox::critical(this, tr("Failed to lookup BitName!"),
@@ -43,12 +71,65 @@ void BrowsePage::on_lineEditSearch_returnPressed()
         return;
     }
 
+    if (!Resolve(strName)) {
+        // TODO message???
+    }
+}
+
+void BrowsePage::Update()
+{
+    // List my contacts on table
+
+    ui->tableWidgetContacts->setRowCount(0);
+
+    std::vector<uint256> vContact = bitnamesContacts.GetContacts();
+
+    int nRow = 0;
+    for (const uint256& u : vContact) {
+        ui->tableWidgetContacts->insertRow(nRow);
+
+        // Get BitNameDB data
+        BitName bitname;
+        if (!pbitnametree->GetBitName(u, bitname)) {
+            return;
+        }
+
+        QString name = QString::fromStdString(bitname.strName);
+
+        // Add to table
+        QTableWidgetItem* nameItem = new QTableWidgetItem(name);
+        nameItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
+        ui->tableWidgetContacts->setItem(nRow /* row */, 0 /* col */, nameItem);
+
+        nRow++;
+    }
+}
+
+void BrowsePage::on_tableWidgetContacts_itemClicked(QTableWidgetItem* item)
+{
+    if (!item)
+        return;
+
+    QString text = item->text();
+    if (text.isEmpty())
+        return;
+
+    if (!Resolve(text.toStdString())) {
+        // TODO message?
+    }
+}
+
+bool BrowsePage::Resolve(const std::string& strName)
+{
+    ui->textBrowser->clear();
+
     BitName bitname;
     if (!pbitnametree->GetBitName(strName, bitname)) {
         QMessageBox::critical(this, tr("Failed to lookup BitName!"),
             tr("BitName not found! Double check the name you have entered and try again!\n"),
             QMessageBox::Ok);
-        return;
+        return false;
     }
 
     QString result = "";
@@ -68,4 +149,6 @@ void BrowsePage::on_lineEditSearch_returnPressed()
     }
 
     ui->textBrowser->setPlainText(result);
+
+    return true;
 }
