@@ -114,9 +114,6 @@ private:
     QAction *openAction;
     QAction *showHelpMessageAction;
     QAction *sidechainAction;
-    QAction *myAssetsAction;
-    QAction *browseAssetsAction;
-    QAction *createAssetAction;
     QAction *showHashCalcDialogAction;
     QAction *showBlockExplorerDialogAction;
 
@@ -225,13 +222,6 @@ private Q_SLOTS:
     void showHashCalcDialog();
     /** Show block explorer dialog */
     void showBlockExplorerDialog();
-
-    /** Switch to my assets page */
-    void gotoMyAssetsPage();
-    /** Switch to browse assets page */
-    void gotoBrowseAssetsPage();
-    /** Switch to create asset page */
-    void gotoCreateAssetPage();
 
     /** Show open dialog */
     void openClicked();

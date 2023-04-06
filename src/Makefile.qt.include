@@ -98,20 +98,16 @@ QT_FORMS_UI = \
   qt/forms/addressbookpage.ui \
   qt/forms/askpassphrasedialog.ui \
   qt/forms/amountfield.ui \
-  qt/forms/assettransferdialog.ui \
   qt/forms/blockexplorer.ui \
   qt/forms/blockindexdetailsdialog.ui \
-  qt/forms/browseassetspage.ui \
   qt/forms/coincontroldialog.ui \
   qt/forms/confgeneratordialog.ui \
-  qt/forms/createassetpage.ui \
   qt/forms/editaddressdialog.ui \
   qt/forms/hashcalcdialog.ui \
   qt/forms/helpmessagedialog.ui \
   qt/forms/intro.ui \
   qt/forms/manualbmmdialog.ui \
   qt/forms/merkletreedialog.ui \
-  qt/forms/myassetspage.ui \
   qt/forms/openuridialog.ui \
   qt/forms/optionsdialog.ui \
   qt/forms/overviewpage.ui \
@@ -133,8 +129,6 @@ QT_MOC_CPP = \
   qt/moc_addresstablemodel.cpp \
   qt/moc_amountfield.cpp \
   qt/moc_askpassphrasedialog.cpp \
-  qt/moc_assettablemodel.cpp \
-  qt/moc_assettransferdialog.cpp \
   qt/moc_bantablemodel.cpp \
   qt/moc_blockexplorer.cpp \
   qt/moc_blockexplorertablemodel.cpp \
@@ -142,13 +136,11 @@ QT_MOC_CPP = \
   qt/moc_bitcoinaddressvalidator.cpp \
   qt/moc_bitcoingui.cpp \
   qt/moc_bitcoinunits.cpp \
-  qt/moc_browseassetspage.cpp \
   qt/moc_callback.cpp \
   qt/moc_clientmodel.cpp \
   qt/moc_coincontroldialog.cpp \
   qt/moc_confgeneratordialog.cpp \
   qt/moc_coincontroltreewidget.cpp \
-  qt/moc_createassetpage.cpp \
   qt/moc_csvmodelwriter.cpp \
   qt/moc_editaddressdialog.cpp \
   qt/moc_guiutil.cpp \
@@ -158,8 +150,6 @@ QT_MOC_CPP = \
   qt/moc_macdockiconhandler.cpp \
   qt/moc_macnotificationhandler.cpp \
   qt/moc_merkletreedialog.cpp \
-  qt/moc_myassetspage.cpp \
-  qt/moc_myassetstablemodel.cpp \
   qt/moc_notificator.cpp \
   qt/moc_openuridialog.cpp \
   qt/moc_optionsdialog.cpp \
@@ -221,8 +211,6 @@ BITCOIN_QT_H = \
   qt/addresstablemodel.h \
   qt/amountfield.h \
   qt/askpassphrasedialog.h \
-  qt/assettablemodel.h \
-  qt/assettransferdialog.h \
   qt/bantablemodel.h \
   qt/blockexplorer.h \
   qt/blockexplorertablemodel.h \
@@ -230,13 +218,11 @@ BITCOIN_QT_H = \
   qt/bitcoinaddressvalidator.h \
   qt/bitcoingui.h \
   qt/bitcoinunits.h \
-  qt/browseassetspage.h \
   qt/callback.h \
   qt/clientmodel.h \
   qt/coincontroldialog.h \
   qt/confgeneratordialog.h \
   qt/coincontroltreewidget.h \
-  qt/createassetpage.h \
   qt/csvmodelwriter.h \
   qt/editaddressdialog.h \
   qt/guiconstants.h \
@@ -247,8 +233,6 @@ BITCOIN_QT_H = \
   qt/macdockiconhandler.h \
   qt/macnotificationhandler.h \
   qt/merkletreedialog.h \
-  qt/myassetspage.h \
-  qt/myassetstablemodel.h \
   qt/networkstyle.h \
   qt/notificator.h \
   qt/openuridialog.h \
@@ -389,20 +373,14 @@ BITCOIN_QT_WALLET_CPP = \
   qt/addressbookpage.cpp \
   qt/addresstablemodel.cpp \
   qt/askpassphrasedialog.cpp \
-  qt/assettablemodel.cpp \
-  qt/assettransferdialog.cpp \
   qt/blockexplorer.cpp \
   qt/blockexplorertablemodel.cpp \
   qt/blockindexdetailsdialog.cpp \
-  qt/browseassetspage.cpp \
   qt/coincontroldialog.cpp \
   qt/confgeneratordialog.cpp \
   qt/coincontroltreewidget.cpp \
-  qt/createassetpage.cpp \
   qt/editaddressdialog.cpp \
   qt/merkletreedialog.cpp \
-  qt/myassetspage.cpp \
-  qt/myassetstablemodel.cpp \
   qt/openuridialog.cpp \
   qt/overviewpage.cpp \
   qt/paymentrequestplus.cpp \
