@@ -22,6 +22,8 @@ public:
 private:
     Ui::SwitchBitNamesDialog *ui;
 
+    void Update();
+
 private Q_SLOTS:
     void on_pushButtonRegister_clicked();
     void on_pushButtonClaim_clicked();
