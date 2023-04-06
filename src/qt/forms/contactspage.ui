@@ -26,7 +26,7 @@
      <item>
       <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>LayerTwoLabs.bitcoin</string>
+        <string>LayerTwoLabs</string>
        </property>
       </widget>
      </item>
@@ -60,7 +60,18 @@
     </layout>
    </item>
    <item>
-    <widget class="QTableWidget" name="tableWidget"/>
+    <widget class="QTableWidget" name="tableWidgetContacts">
+     <column>
+      <property name="text">
+       <string>Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>ID</string>
+      </property>
+     </column>
+    </widget>
    </item>
   </layout>
  </widget>

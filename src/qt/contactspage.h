@@ -26,6 +26,8 @@ private:
 
     const PlatformStyle *platformStyle;
 
+    void Update();
+
 private Q_SLOTS:
     void on_pushButtonSwitch_clicked();
     void on_pushButtonAdd_clicked();
