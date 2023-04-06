@@ -8,6 +8,10 @@ BitNamesContacts::BitNamesContacts()
 {
 
 }
+void BitNamesContacts::AddContact(const uint256& id)
+{
+    vContactID.push_back(id);
+}
 
 void BitNamesContacts::SetContacts(const std::vector<uint256> vContact)
 {

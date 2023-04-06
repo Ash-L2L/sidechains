@@ -21,6 +21,9 @@ public:
 
 private:
     Ui::AddContactDialog *ui;
+
+private Q_SLOTS:
+   void on_pushButtonAdd_clicked();
 };
 
 #endif // ADDCONTACTDIALOG_H

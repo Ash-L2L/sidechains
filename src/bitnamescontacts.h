@@ -14,6 +14,7 @@ class BitNamesContacts
 public:
     BitNamesContacts();
 
+    void AddContact(const uint256& id);
     void SetContacts(const std::vector<uint256> vContact);
     void SetCurrentID(const uint256 id);
 
