@@ -243,26 +243,24 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
     bool fCreateBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
     bool fUpdateBitName = tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION;
 
-    // in a create bitname tx, if the 'name' field is set (registration), then
-    // there must exist a bitname reservation input at the last index of the
-    // inputs, for which the reserved hashedName must be equal to the hash of
-    // txinputshash+commitment+name, where the txinputshash is tha hash of tx
-    // inputs for the tx that created the bitname reservation.
+    // in a create bitname tx, if the 'name_hash' field is set (registration),
+    // then there must exist a bitname reservation input at the last index of
+    // the inputs, for which the reserved commitment must be equal to the hash
+    // of txinputshash+commitment+name_hash, where the txinputshash is tha hash
+    // of tx inputs for the tx that created the bitname reservation.
     if (fCreateBitName) {
-        if (!tx.name.empty()) {
+        if (tx.name_hash != uint256()) {
             const COutPoint& lastOutpoint = tx.vin.back().prevout;
             const Coin& lastInputCoin = inputs.AccessCoin(lastOutpoint);
             // last input coin must be a reservation
             if (!lastInputCoin.fBitNameReservation)
                 return state.DoS(10, false, REJECT_INVALID, "bad-txns-inputs-missing-reservation");
             uint256 commitment = lastInputCoin.commitment;
-            std::string name = tx.name;
+            uint256 name_hash = tx.name_hash;
             uint256 sok = tx.sok; // statement of knowledge, aka salt
-            // compute the hash of name + sok
+            // compute the hash of name_hash + sok
             uint256 hash_result;
-            const unsigned char* name_ptr =
-                reinterpret_cast<const unsigned char*>(name.c_str());
-            CHash256().Write(name_ptr, name.size())
+            CHash256().Write(name_hash.begin(), name_hash.size())
                       .Write(sok.begin(), sok.size())
                       .Finalize((unsigned char*) &hash_result);
             if (commitment != hash_result)

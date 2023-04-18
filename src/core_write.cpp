@@ -210,7 +210,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
 
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
         entry.pushKV("commitment", tx.commitment.ToString());
-        entry.pushKV("name", tx.name);
+        entry.pushKV("name_hash", tx.name_hash.ToString());
         entry.pushKV("sok", tx.sok.ToString());
         if (tx.fIn4) {
             entry.pushKV("ip4_addr", std::string(inet_ntoa(tx.in4)));

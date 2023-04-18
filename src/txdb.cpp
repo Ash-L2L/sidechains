@@ -592,7 +592,8 @@ bool BitNameDB::WriteBitNames(const std::vector<BitName>& vBitName)
 {
     CDBBatch batch(*this);
     for (const BitName& bitname : vBitName) {
-        std::pair<char, uint256> key = std::make_pair(DB_BITNAME, bitname.nID);
+        std::pair<char, uint256> key =
+            std::make_pair(DB_BITNAME, bitname.name_hash);
         batch.Write(key, bitname);
     }
     return WriteBatch(batch, true);
@@ -628,35 +629,15 @@ std::vector<BitName> BitNameDB::GetBitNames()
     return vBitName;
 }
 
-bool BitNameDB::RemoveBitName(const uint256 nID)
+bool BitNameDB::RemoveBitName(const uint256 name_hash)
 {
-    std::pair<char, uint256> key = std::make_pair(DB_BITNAME, nID);
+    std::pair<char, uint256> key = std::make_pair(DB_BITNAME, name_hash);
     return Erase(key);
 }
 
-bool BitNameDB::RemoveBitName(const std::string strName)
+bool BitNameDB::GetBitName(const uint256 name_hash, BitName& bitname)
 {
-    uint256 nID;
-    const unsigned char* name_ptr =
-        reinterpret_cast<const unsigned char*>(strName.c_str());
-    CHash256().Write(name_ptr, strName.size())
-              .Finalize((unsigned char*) &nID);
-    return RemoveBitName(nID);
-}
-
-bool BitNameDB::GetBitName(const uint256 nID, BitName& bitname)
-{
-    return Read(std::make_pair(DB_BITNAME, nID), bitname);
-}
-
-bool BitNameDB::GetBitName(const std::string strName, BitName& bitname)
-{
-    uint256 nID;
-    const unsigned char* name_ptr =
-        reinterpret_cast<const unsigned char*>(strName.c_str());
-    CHash256().Write(name_ptr, strName.size())
-              .Finalize((unsigned char*) &nID);
-    return GetBitName(nID, bitname);
+    return Read(std::make_pair(DB_BITNAME, name_hash), bitname);
 }
 
 BitNameReservationDB::BitNameReservationDB(size_t nCacheSize, bool fMemory, bool fWipe)

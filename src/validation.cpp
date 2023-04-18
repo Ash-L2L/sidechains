@@ -1732,9 +1732,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                 std::vector<BitName> vBitnames = pbitnametree->GetBitNames();
                 for (const BitName& bn : vBitnames) {
                     std::cout << "Found BitName "
-                              << bn.nID.ToString()
-                              << ": "
-                              << bn.strName
+                              << bn.name_hash.ToString()
                               << std::endl;
                 }
                 return DISCONNECT_FAILED;
@@ -1749,7 +1747,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
             }
             bitname.txid.pop_front();
 
-            if (!pbitnametree->RemoveBitName(tx.name)) {
+            if (!pbitnametree->RemoveBitName(tx.name_hash)) {
                 error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
                 return DISCONNECT_FAILED;
             }
@@ -1760,10 +1758,10 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         }
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             // Undo BitName creation & revert asset ID #
-            // A bitname registration must reveal the `name` parameter
-            if (!tx.name.empty()) {
+            // A bitname registration must reveal the `name_hash` parameter
+            if (tx.name_hash != uint256()) {
                 // BitName Registration
-                if (!pbitnametree->RemoveBitName(tx.name)) {
+                if (!pbitnametree->RemoveBitName(tx.name_hash)) {
                     error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
                     return DISCONNECT_FAILED;
                 }
@@ -2388,18 +2386,12 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                                  REJECT_INVALID, "bad-asset-vout-small");
             }
 
-            // If the `name` field is present, this is a bitname registration
-            if (!tx.name.empty()) {
+            // If the `name_hash` field is present, this is a bitname
+            // registration
+            if (tx.name_hash != uint256()) {
                 // BitName registration
-                uint256 nBitNameID;
-                const unsigned char* name_ptr =
-                    reinterpret_cast<const unsigned char*>(tx.name.c_str());
-                CHash256().Write(name_ptr, tx.name.size())
-                        .Finalize((unsigned char*) &nBitNameID);
-
                 BitName bitname;
-                bitname.nID = nBitNameID;
-                bitname.strName = tx.name;
+                bitname.name_hash = tx.name_hash;
                 bitname.commitment.push_front(tx.commitment);
                 boost::optional<in_addr_t> in4 =
                     // workaround for false positive with -Wmaybe-uninitialized
@@ -2411,10 +2403,10 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 bitname.in4.push_front(in4);
                 bitname.txid.push_front(tx.GetHash());
 
-                mapBitName.insert({bitname.nID, bitname});
+                mapBitName.insert({bitname.name_hash, bitname});
 
                 // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
-                nNewAssetID = bitname.nID;
+                nNewAssetID = bitname.name_hash;
             } else {
                 // BitName reservation
                 uint256 nBitNameReservationIDLast = uint256();
@@ -2424,7 +2416,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 arith_uint256 nBitNameReservationIDLast_tmp = UintToArith256(nBitNameReservationIDLast);
                 nBitNameReservationIDLast_tmp++;
                 bitNameReservation.nID = ArithToUint256(nBitNameReservationIDLast_tmp);
-                bitNameReservation.hashedName = tx.commitment;
+                bitNameReservation.commitment = tx.commitment;
                 bitNameReservation.txid = tx.GetHash();
 
                 vBitNameReservation.push_back(bitNameReservation);
@@ -2465,7 +2457,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             }
             bitname.txid.push_front(tx.GetHash());
 
-            mapBitName.insert({bitname.nID, bitname});
+            mapBitName.insert({bitname.name_hash, bitname});
 
         }
 

@@ -4046,7 +4046,7 @@ UniValue listmybitnamereservations(const JSONRPCRequest& request)
 
         // FIXME: is `id` included twice?
         obj.pushKV("id", bitNameReservation.nID.ToString());
-        obj.pushKV("commitment", bitNameReservation.hashedName.ToString());
+        obj.pushKV("commitment", bitNameReservation.commitment.ToString());
         obj.pushKV("creationtxid", bitNameReservation.txid.ToString());
 
         ar.push_back(obj);
@@ -4099,7 +4099,7 @@ UniValue listmybitnames(const JSONRPCRequest& request)
         if (!pbitnametree->GetBitName(o.tx->nAssetID, bitname))
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to load bitname data!");
 
-        obj.pushKV("name", bitname.strName);
+        obj.pushKV("name_hash", bitname.name_hash.ToString());
         boost::optional<uint256> commitment = bitname.commitment.front();
         if (commitment) {
             obj.pushKV("commitment", (*commitment).ToString());

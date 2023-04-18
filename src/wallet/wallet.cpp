@@ -2333,9 +2333,9 @@ void CWallet::AvailableBitNameReservations(std::vector<COutput> &vCoins, uint256
         if (!safeTx)
             continue;
         
-        // in a reservation, the `name` tx field is not set, and the
+        // in a reservation, the `name_hash` tx field is not set, and the
         // only inputs are Bitcoins
-        if (!wtx->tx->name.empty())
+        if (wtx->tx->name_hash != uint256())
             continue;
         // check that the last input is Bitcoins
         if (!wtx->tx->vin.empty()) {
@@ -2404,7 +2404,7 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
         // in a registration, the `name` tx field is set, and the
         // last input is the reservation
         if (wtx->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION
-            && wtx->tx->name.empty())
+            && wtx->tx->name_hash == uint256())
             continue;
         if (wtx->tx->vin.empty()) {
             continue;
@@ -3209,10 +3209,13 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
 
     // BitName info
+    uint256 name_hash;
     uint256 commitment;
     const unsigned char* name_ptr =
         reinterpret_cast<const unsigned char*>(strName.c_str());
     CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &name_hash);
+    CHash256().Write(name_hash.begin(), name_hash.size())
               .Write(salt.begin(), salt.size())
               .Finalize((unsigned char*) &commitment);
     mtx.commitment = commitment;
@@ -3351,8 +3354,19 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     CMutableTransaction mtx;
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
 
+    // calculate name hash and expected reservation commitment
+    uint256 name_hash;
+    uint256 reservation_commitment;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &name_hash);
+    CHash256().Write(name_hash.begin(), name_hash.size())
+              .Write(sok.begin(), sok.size())
+              .Finalize((unsigned char*) &reservation_commitment);
+
     // BitName info
-    mtx.name = strName;
+    mtx.name_hash = name_hash;
     mtx.commitment = commitment;
     mtx.sok = sok;
     mtx.fIn4 = true;
@@ -3367,17 +3381,6 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     BlockUntilSyncedToCurrentChain();
 
     LOCK2(cs_main, vpwallets[0]->cs_wallet);
-
-    // calculate asset ID and expected reservation commitment
-    uint256 nAssetID;
-    uint256 reservation_commitment;
-    const unsigned char* name_ptr =
-        reinterpret_cast<const unsigned char*>(strName.c_str());
-    CHash256().Write(name_ptr, strName.size())
-              .Finalize((unsigned char*) &nAssetID);
-    CHash256().Write(name_ptr, strName.size())
-              .Write(sok.begin(), sok.size())
-              .Finalize((unsigned char*) &reservation_commitment);
 
     // Select coins to cover fee
     std::vector<COutput> vCoins;
@@ -3496,7 +3499,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
     walletTx.strName = strName;
     walletTx.nControlN = 0;
-    walletTx.nAssetID = nAssetID; 
+    walletTx.nAssetID = name_hash; 
 
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
@@ -3659,13 +3662,13 @@ bool CWallet::UpdateBitName(CTransactionRef& tx, std::string& strFail, const std
     walletTx.strName = strName;
     walletTx.nControlN = 0;
 
-    // calculate asset ID
-    uint256 nAssetID;
+    // calculate name hash
+    uint256 name_hash;
     const unsigned char* name_ptr =
         reinterpret_cast<const unsigned char*>(strName.c_str());
     CHash256().Write(name_ptr, strName.size())
-              .Finalize((unsigned char*) &nAssetID);
-    walletTx.nAssetID = nAssetID;
+              .Finalize((unsigned char*) &name_hash);
+    walletTx.nAssetID = name_hash;
 
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
