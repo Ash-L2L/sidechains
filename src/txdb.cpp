@@ -37,7 +37,6 @@ static const char DB_LAST_SIDECHAIN_WITHDRAWAL_BUNDLE = 'w';
 static const char DB_BITNAME = 'A';
 
 static const char DB_BITNAME_RESERVATION = 'Q';
-static const char DB_BITNAME_RESERVATION_LAST_ID = 'V';
 
 namespace {
 
@@ -653,6 +652,12 @@ bool BitNameReservationDB::WriteBitNameReservations(const std::vector<BitNameRes
     return WriteBatch(batch, true);
 }
 
+bool BitNameReservationDB::WriteBitNameReservation(const BitNameReservation& reservation)
+{
+    std::vector<BitNameReservation> vBitNameReservations{ reservation };
+    return WriteBitNameReservations(vBitNameReservations);
+}
+
 std::vector<BitNameReservation> BitNameReservationDB::GetBitNameReservations()
 {
     std::ostringstream ss;
@@ -675,20 +680,6 @@ std::vector<BitNameReservation> BitNameReservationDB::GetBitNameReservations()
         pcursor->Next();
     }
     return vBitNameReservation;
-}
-
-bool BitNameReservationDB::GetLastReservationID(uint256& nID)
-{
-    // Look up the last reservation ID (in chronological order)
-    if (!Read(DB_BITNAME_RESERVATION_LAST_ID, nID))
-        return false;
-
-    return true;
-}
-
-bool BitNameReservationDB::WriteLastReservationID(const uint256 nID)
-{
-    return Write(DB_BITNAME_RESERVATION_LAST_ID, nID);
 }
 
 bool BitNameReservationDB::RemoveReservation(const uint256 nID)
