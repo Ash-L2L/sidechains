@@ -3354,7 +3354,7 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     return true;
 }
 
-bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& sok, const uint256& commitment, const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable)
+bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment, const in_addr& in4, const CAmount& nFee, bool fImmutable)
 {
     strFail = "Unknown error!";
 
@@ -3363,42 +3363,49 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
         return false;
     }
 
+    BlockUntilSyncedToCurrentChain();
+    LOCK2(cs_main, cs_wallet);
+    EnsureWalletIsUnlocked(this);
+
+    /*
     CTxDestination dest = DecodeDestination(strDest);
     if (!fImmutable && !IsValidDestination(dest)) {
         strFail = "Invalid destination";
         return false;
     }
+    */
+
+    CReserveKey reserveKey(this);
+    // Reserve a new key pair from key pool for the registration output
+    CPubKey vchRegistrationPubKey;
+    if (!reserveKey.GetReservedKey(vchRegistrationPubKey, true))
+    {
+        strFail = "Keypool ran out, please call keypoolrefill first!\n";
+        return false;
+    }
+    // keep the key so that another can be reserved later
+    // FIXME: do not keep if tx not commited
+    reserveKey.KeepKey();
+    CKeyID vchRegistrationPubKeyID = vchRegistrationPubKey.GetID();
+    CKey vchRegistrationSecret;
+    if (!GetKey(vchRegistrationPubKeyID, vchRegistrationSecret)) {
+        strFail = "Secret key for Public key ID "
+                  + vchRegistrationPubKeyID.ToString()
+                  + " is not known";
+        return false;
+    }
+    CScript scriptRegistration =
+        GetScriptForDestination(vchRegistrationPubKeyID);
 
     CMutableTransaction mtx;
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
-
-    // calculate name hash and expected reservation commitment
-    uint256 name_hash;
-    uint256 reservation_commitment;
-    const unsigned char* name_ptr =
-        reinterpret_cast<const unsigned char*>(strName.c_str());
-    CHash256().Write(name_ptr, strName.size())
-              .Finalize((unsigned char*) &name_hash);
-    CHash256().Write(name_hash.begin(), name_hash.size())
-              .Write(sok.begin(), sok.size())
-              .Finalize((unsigned char*) &reservation_commitment);
-
-    // BitName info
-    mtx.name_hash = name_hash;
-    mtx.commitment = commitment;
-    mtx.sok = sok;
-    mtx.fIn4 = true;
-    mtx.in4 = in4;
 
     // registration output
     if (fImmutable)
         mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
     else
-        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
-
-    BlockUntilSyncedToCurrentChain();
-
-    LOCK2(cs_main, vpwallets[0]->cs_wallet);
+        //mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
+        mtx.vout.push_back(CTxOut(1, scriptRegistration));
 
     // Select coins to cover fee
     std::vector<COutput> vCoins;
@@ -3413,7 +3420,6 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
 
     // Handle change if there is any
     const CAmount nChange = nAmountRet - nFee;
-    CReserveKey reserveKey(vpwallets[0]);
     if (nChange > 0) {
         CScript scriptChange;
 
@@ -3440,7 +3446,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     std::vector<COutput> vBitNameReservation;
     AvailableBitNameReservations(vBitNameReservation);
     for (COutput& output : vBitNameReservation) {
-        if (output.tx->tx->commitment == reservation_commitment) {
+        if (output.tx->strName == strName) {
             reservation_ptr = &output;
             break;
         }
@@ -3456,6 +3462,20 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     COutPoint reservation_outpoint = reservation_coin.outpoint;
     mtx.vin.push_back(CTxIn(reservation_outpoint.hash, reservation_outpoint.n, CScript()));
     vInputCoins.push_back(reservation_coin);
+
+    // calculate name hash
+    uint256 name_hash;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &name_hash);
+
+    // BitName info
+    mtx.name_hash = name_hash;
+    mtx.commitment = commitment;
+    mtx.sok = reservation.tx->sok;
+    mtx.fIn4 = true;
+    mtx.in4 = in4;
 
     // Dummy sign the transaction to calculate minimum fee
     std::vector<CInputCoin> vInputCoinsTemp = vInputCoins;

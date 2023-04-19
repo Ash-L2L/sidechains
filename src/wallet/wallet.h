@@ -1003,7 +1003,7 @@ public:
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
                            std::string& strFailReason, const CCoinControl& coin_control, bool sign = true);
     bool ReserveBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const CAmount& nFee, bool fImmutable = false);
-    bool RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& sok, const uint256& commitment,  const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable = false);
+    bool RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment,  const in_addr& in4, const CAmount& nFee, bool fImmutable = false);
     bool UpdateBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment,  const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable = false);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
 
