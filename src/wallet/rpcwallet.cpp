@@ -3750,14 +3750,12 @@ UniValue reservebitname(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() != 4)
+    if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
             "reservebitname\n"
             "\nArguments:\n"
             "1. \"name\"               (string, required)\n"
-            "2. \"salt\"               (string, required)\n"
-            "3. \"fee\"                (numeric or string, required)\n"
-            "4. \"address\"            (string, required)\n"
+            "2. \"fee\"                (numeric or string, required)\n"
             "\nReserve a BitName\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nResult (array):\n"
@@ -3777,24 +3775,12 @@ UniValue reservebitname(const JSONRPCRequest& request)
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
     }
-    // Salt
-    uint256 salt = uint256S(request.params[1].get_str());
-    if (salt.IsNull()) {
-        std::string strError = "Invalid - missing salt";
-        LogPrintf("%s: %s\n", __func__, strError);
-        throw JSONRPCError(RPC_MISC_ERROR, strError);
-    }
     // Fee
-    CAmount nFee = AmountFromValue(request.params[2]);
+    CAmount nFee = AmountFromValue(request.params[1]);
     if (nFee <= 0) {
         std::string strError = "Invalid fee amount";
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
-    }
-    // Destination address
-    CTxDestination dest = DecodeDestination(request.params[3].get_str());
-    if (!IsValidDestination(dest)) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid destination address");
     }
 
     EnsureWalletIsUnlocked(pwallet);
@@ -3804,7 +3790,7 @@ UniValue reservebitname(const JSONRPCRequest& request)
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!pwallet->ReserveBitName(tx, strFail, strName, salt, nFee, request.params[3].get_str()))
+    if (!pwallet->ReserveBitName(tx, strFail, strName, nFee))
     {
         LogPrintf("%s: %s\n", __func__, strFail);
         throw JSONRPCError(RPC_MISC_ERROR, strFail);
@@ -4542,7 +4528,7 @@ static const CRPCCommand commands[] =
     { "sidechain",          "createwithdrawalrefundrequest",    &createwithdrawalrefundrequest, {"id"} },
     { "sidechain",          "refundallwithdrawals",             &refundallwithdrawals,          {} },
 
-    { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "salt", "nfee", "dest"} },
+    { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "nfee"} },
     { "BitNames",          "registerbitname",                  &registerbitname,                  {"name", "sok", "commitment", "ipv4", "nfee", "dest"} },
     { "BitNames",          "updatebitname",                    &updatebitname,                    {"name", "commitment", "ipv4", "nfee", "dest"} },
     { "BitNames",          "listmybitnamereservations",        &listmybitnamereservations,       {} },
