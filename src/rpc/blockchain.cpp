@@ -969,7 +969,10 @@ UniValue gettxout(const JSONRPCRequest& request)
             "        ,...\n"
             "     ]\n"
             "  },\n"
-            "  \"coinbase\" : true|false   (boolean) Coinbase or not\n"
+            "  \"coinbase\" : true|false,   (boolean) Coinbase or not\n"
+            "  \"bitname\" : true|false,    (boolean) BitName or not\n"
+            "  \"bitnamereservation\" : true|false,   (boolean) BitName reservation or not\n"
+            "  \"nID\" : \"hex\"            (string) BitName (reservation) ID\n"
             "}\n"
 
             "\nExamples:\n"
@@ -1019,6 +1022,11 @@ UniValue gettxout(const JSONRPCRequest& request)
     ScriptPubKeyToUniv(coin.out.scriptPubKey, o, true);
     ret.pushKV("scriptPubKey", o);
     ret.pushKV("coinbase", (bool)coin.fCoinBase);
+    ret.pushKV("bitname", coin.fBitName);
+    ret.pushKV("bitnamereservation", coin.fBitNameReservation);
+    if (coin.fBitName || coin.fBitNameReservation) {
+        ret.pushKV("nID", coin.nAssetID.ToString());
+    }
 
     return ret;
 }

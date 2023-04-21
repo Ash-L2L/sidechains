@@ -8,6 +8,7 @@
 #include <base58.h>
 #include <checkpoints.h>
 #include <chain.h>
+#include <crypto/hmac_sha256.h>
 #include <wallet/coincontrol.h>
 #include <consensus/consensus.h>
 #include <consensus/validation.h>
@@ -2333,9 +2334,9 @@ void CWallet::AvailableBitNameReservations(std::vector<COutput> &vCoins, uint256
         if (!safeTx)
             continue;
         
-        // in a reservation, the `name` tx field is not set, and the
+        // in a reservation, the `name_hash` tx field is not set, and the
         // only inputs are Bitcoins
-        if (!wtx->tx->name.empty())
+        if (wtx->tx->name_hash != uint256())
             continue;
         // check that the last input is Bitcoins
         if (!wtx->tx->vin.empty()) {
@@ -2404,7 +2405,7 @@ void CWallet::AvailableBitNames(std::vector<COutput> &vCoins, uint256 txid) cons
         // in a registration, the `name` tx field is set, and the
         // last input is the reservation
         if (wtx->tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION
-            && wtx->tx->name.empty())
+            && wtx->tx->name_hash == uint256())
             continue;
         if (wtx->tx->vin.empty()) {
             continue;
@@ -3177,7 +3178,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
     return true;
 }
 
-bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& salt, const CAmount& nFee, const std::string& strDest, bool fImmutable)
+bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const CAmount& nFee, bool fImmutable)
 {
     strFail = "Unknown error!";
 
@@ -3187,32 +3188,57 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     }
 
 
+    BlockUntilSyncedToCurrentChain();
+    LOCK2(cs_main, cs_wallet);
+    EnsureWalletIsUnlocked(this);
+
+    /*
     CTxDestination dest = DecodeDestination(strDest);
     if (!fImmutable && !IsValidDestination(dest)) {
         strFail = "Invalid destination";
         return false;
     }
+    */
 
-    /*
-    CReserveKey reservationKey(vpwallets[0]);
-    // Reserve a new key pair from key pool
+    CReserveKey reserveKey(this);
+    // Reserve a new key pair from key pool for the reservation
     CPubKey vchReservationPubKey;
-    if (!reservationKey.GetReservedKey(vchReservationPubKey))
+    if (!reserveKey.GetReservedKey(vchReservationPubKey, true))
     {
         strFail = "Keypool ran out, please call keypoolrefill first!\n";
         return false;
     }
-    CScript scriptReservation = GetScriptForDestination(vchReservationPubKey.GetID());
-    */
+    // keep the key so that another can be reserved later
+    // FIXME: do not keep if tx not commited
+    reserveKey.KeepKey();
+    CKeyID vchReservationPubKeyID = vchReservationPubKey.GetID();
+    CKey vchReservationSecret;
+    if (!GetKey(vchReservationPubKeyID, vchReservationSecret)) {
+        strFail = "Secret key for Public key ID "
+                  + vchReservationPubKeyID.ToString()
+                  + " is not known";
+        return false;
+    }
+    CScript scriptReservation = GetScriptForDestination(vchReservationPubKeyID);
 
     CMutableTransaction mtx;
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
 
     // BitName info
-    uint256 commitment;
+    // compute name hash
+    uint256 name_hash;
     const unsigned char* name_ptr =
         reinterpret_cast<const unsigned char*>(strName.c_str());
     CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &name_hash);
+    // compute salt
+    uint256 salt;
+    CHMAC_SHA256(vchReservationSecret.begin(), vchReservationSecret.size())
+        .Write(name_hash.begin(), name_hash.size())
+        .Finalize((unsigned char*) &salt);
+    // compute commitment
+    uint256 commitment;
+    CHash256().Write(name_hash.begin(), name_hash.size())
               .Write(salt.begin(), salt.size())
               .Finalize((unsigned char*) &commitment);
     mtx.commitment = commitment;
@@ -3221,12 +3247,8 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     if (fImmutable)
         mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
     else
-        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
-    //mtx.vout.push_back(CTxOut(1, scriptReservation));
-
-    BlockUntilSyncedToCurrentChain();
-
-    LOCK2(cs_main, vpwallets[0]->cs_wallet);
+        //mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
+        mtx.vout.push_back(CTxOut(1, scriptReservation));
 
     // Select coins to cover fee
     std::vector<COutput> vCoins;
@@ -3240,7 +3262,6 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
 
     // Handle change if there is any
     const CAmount nChange = nAmountRet - nFee;
-    CReserveKey reserveKey(vpwallets[0]);
     if (nChange > 0) {
         CScript scriptChange;
 
@@ -3333,7 +3354,7 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     return true;
 }
 
-bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& sok, const uint256& commitment, const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable)
+bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment, const in_addr& in4, const CAmount& nFee, bool fImmutable)
 {
     strFail = "Unknown error!";
 
@@ -3342,42 +3363,49 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
         return false;
     }
 
+    BlockUntilSyncedToCurrentChain();
+    LOCK2(cs_main, cs_wallet);
+    EnsureWalletIsUnlocked(this);
+
+    /*
     CTxDestination dest = DecodeDestination(strDest);
     if (!fImmutable && !IsValidDestination(dest)) {
         strFail = "Invalid destination";
         return false;
     }
+    */
+
+    CReserveKey reserveKey(this);
+    // Reserve a new key pair from key pool for the registration output
+    CPubKey vchRegistrationPubKey;
+    if (!reserveKey.GetReservedKey(vchRegistrationPubKey, true))
+    {
+        strFail = "Keypool ran out, please call keypoolrefill first!\n";
+        return false;
+    }
+    // keep the key so that another can be reserved later
+    // FIXME: do not keep if tx not commited
+    reserveKey.KeepKey();
+    CKeyID vchRegistrationPubKeyID = vchRegistrationPubKey.GetID();
+    CKey vchRegistrationSecret;
+    if (!GetKey(vchRegistrationPubKeyID, vchRegistrationSecret)) {
+        strFail = "Secret key for Public key ID "
+                  + vchRegistrationPubKeyID.ToString()
+                  + " is not known";
+        return false;
+    }
+    CScript scriptRegistration =
+        GetScriptForDestination(vchRegistrationPubKeyID);
 
     CMutableTransaction mtx;
     mtx.nVersion = TRANSACTION_BITNAME_CREATE_VERSION;
-
-    // BitName info
-    mtx.name = strName;
-    mtx.commitment = commitment;
-    mtx.sok = sok;
-    mtx.fIn4 = true;
-    mtx.in4 = in4;
 
     // registration output
     if (fImmutable)
         mtx.vout.push_back(CTxOut(1, CScript() << OP_RETURN));
     else
-        mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
-
-    BlockUntilSyncedToCurrentChain();
-
-    LOCK2(cs_main, vpwallets[0]->cs_wallet);
-
-    // calculate asset ID and expected reservation commitment
-    uint256 nAssetID;
-    uint256 reservation_commitment;
-    const unsigned char* name_ptr =
-        reinterpret_cast<const unsigned char*>(strName.c_str());
-    CHash256().Write(name_ptr, strName.size())
-              .Finalize((unsigned char*) &nAssetID);
-    CHash256().Write(name_ptr, strName.size())
-              .Write(sok.begin(), sok.size())
-              .Finalize((unsigned char*) &reservation_commitment);
+        //mtx.vout.push_back(CTxOut(1, GetScriptForDestination(dest)));
+        mtx.vout.push_back(CTxOut(1, scriptRegistration));
 
     // Select coins to cover fee
     std::vector<COutput> vCoins;
@@ -3392,7 +3420,6 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
 
     // Handle change if there is any
     const CAmount nChange = nAmountRet - nFee;
-    CReserveKey reserveKey(vpwallets[0]);
     if (nChange > 0) {
         CScript scriptChange;
 
@@ -3419,7 +3446,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     std::vector<COutput> vBitNameReservation;
     AvailableBitNameReservations(vBitNameReservation);
     for (COutput& output : vBitNameReservation) {
-        if (output.tx->tx->commitment == reservation_commitment) {
+        if (output.tx->strName == strName) {
             reservation_ptr = &output;
             break;
         }
@@ -3435,6 +3462,20 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     COutPoint reservation_outpoint = reservation_coin.outpoint;
     mtx.vin.push_back(CTxIn(reservation_outpoint.hash, reservation_outpoint.n, CScript()));
     vInputCoins.push_back(reservation_coin);
+
+    // calculate name hash
+    uint256 name_hash;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strName.c_str());
+    CHash256().Write(name_ptr, strName.size())
+              .Finalize((unsigned char*) &name_hash);
+
+    // BitName info
+    mtx.name_hash = name_hash;
+    mtx.commitment = commitment;
+    mtx.sok = reservation.tx->sok;
+    mtx.fIn4 = true;
+    mtx.in4 = in4;
 
     // Dummy sign the transaction to calculate minimum fee
     std::vector<CInputCoin> vInputCoinsTemp = vInputCoins;
@@ -3496,7 +3537,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     walletTx.SetTx(MakeTransactionRef(std::move(mtx)));
     walletTx.strName = strName;
     walletTx.nControlN = 0;
-    walletTx.nAssetID = nAssetID; 
+    walletTx.nAssetID = name_hash; 
 
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {
@@ -3659,13 +3700,13 @@ bool CWallet::UpdateBitName(CTransactionRef& tx, std::string& strFail, const std
     walletTx.strName = strName;
     walletTx.nControlN = 0;
 
-    // calculate asset ID
-    uint256 nAssetID;
+    // calculate name hash
+    uint256 name_hash;
     const unsigned char* name_ptr =
         reinterpret_cast<const unsigned char*>(strName.c_str());
     CHash256().Write(name_ptr, strName.size())
-              .Finalize((unsigned char*) &nAssetID);
-    walletTx.nAssetID = nAssetID;
+              .Finalize((unsigned char*) &name_hash);
+    walletTx.nAssetID = name_hash;
 
     CValidationState state;
     if (!CommitTransaction(walletTx, reserveKey, g_connman.get(), state)) {

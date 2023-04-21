@@ -329,13 +329,13 @@ public:
     int64_t nOrderPos; //!< position in ordered transaction list
 
     CAmount amountAssetIn;
-    int nControlN;
+    int nControlN = -1;
     // asset ID created by the tx
-    uint256 nAssetID;
+    uint256 nAssetID = uint256();
     // bitname for reservations / registrations
-    std::string strName;
+    std::string strName = "";
     // salt for bitname reservations
-    uint256 sok;
+    uint256 sok = uint256();
 
     // memory only
     mutable bool fDebitCached;
@@ -1002,8 +1002,8 @@ public:
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
                            std::string& strFailReason, const CCoinControl& coin_control, bool sign = true);
-    bool ReserveBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& salt, const CAmount& nFee, const std::string& strDest, bool fImmutable = false);
-    bool RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& sok, const uint256& commitment,  const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable = false);
+    bool ReserveBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const CAmount& nFee, bool fImmutable = false);
+    bool RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment,  const in_addr& in4, const CAmount& nFee, bool fImmutable = false);
     bool UpdateBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment,  const in_addr& in4, const CAmount& nFee, const std::string& strDest, bool fImmutable = false);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
 

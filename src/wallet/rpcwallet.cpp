@@ -3750,14 +3750,12 @@ UniValue reservebitname(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() != 4)
+    if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
             "reservebitname\n"
             "\nArguments:\n"
             "1. \"name\"               (string, required)\n"
-            "2. \"salt\"               (string, required)\n"
-            "3. \"fee\"                (numeric or string, required)\n"
-            "4. \"address\"            (string, required)\n"
+            "2. \"fee\"                (numeric or string, required)\n"
             "\nReserve a BitName\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nResult (array):\n"
@@ -3777,24 +3775,12 @@ UniValue reservebitname(const JSONRPCRequest& request)
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
     }
-    // Salt
-    uint256 salt = uint256S(request.params[1].get_str());
-    if (salt.IsNull()) {
-        std::string strError = "Invalid - missing salt";
-        LogPrintf("%s: %s\n", __func__, strError);
-        throw JSONRPCError(RPC_MISC_ERROR, strError);
-    }
     // Fee
-    CAmount nFee = AmountFromValue(request.params[2]);
+    CAmount nFee = AmountFromValue(request.params[1]);
     if (nFee <= 0) {
         std::string strError = "Invalid fee amount";
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
-    }
-    // Destination address
-    CTxDestination dest = DecodeDestination(request.params[3].get_str());
-    if (!IsValidDestination(dest)) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid destination address");
     }
 
     EnsureWalletIsUnlocked(pwallet);
@@ -3804,7 +3790,7 @@ UniValue reservebitname(const JSONRPCRequest& request)
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!pwallet->ReserveBitName(tx, strFail, strName, salt, nFee, request.params[3].get_str()))
+    if (!pwallet->ReserveBitName(tx, strFail, strName, nFee))
     {
         LogPrintf("%s: %s\n", __func__, strFail);
         throw JSONRPCError(RPC_MISC_ERROR, strFail);
@@ -3823,16 +3809,14 @@ UniValue registerbitname(const JSONRPCRequest& request)
     }
 
     // TODO: make ipv4 optional
-    if (request.fHelp || request.params.size() != 6)
+    if (request.fHelp || request.params.size() != 4)
         throw std::runtime_error(
             "registerbitname\n"
             "\nArguments:\n"
             "1. \"name\"               (string, required)\n"
-            "2. \"sok\"                (string, required)\n"
-            "3. \"commitment\"         (string, required)\n"
-            "4. \"ipv4\"               (string, required)\n"
-            "5. \"fee\"                (numeric or string, required)\n"
-            "6. \"address\"            (string, required)\n"
+            "2. \"commitment\"         (string, required)\n"
+            "3. \"ipv4\"               (string, required)\n"
+            "4. \"fee\"                (numeric or string, required)\n"
             "\nRegister a BitName\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nResult (array):\n"
@@ -3852,15 +3836,8 @@ UniValue registerbitname(const JSONRPCRequest& request)
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
     }
-    // SoK
-    uint256 sok = uint256S(request.params[1].get_str());
-    if (sok.IsNull()) {
-        std::string strError = "Invalid - missing sok";
-        LogPrintf("%s: %s\n", __func__, strError);
-        throw JSONRPCError(RPC_MISC_ERROR, strError);
-    }
     // commitment
-    uint256 commitment = uint256S(request.params[2].get_str());
+    uint256 commitment = uint256S(request.params[1].get_str());
     if (commitment.IsNull()) {
         std::string strError = "Invalid - missing commitment";
         LogPrintf("%s: %s\n", __func__, strError);
@@ -3868,7 +3845,7 @@ UniValue registerbitname(const JSONRPCRequest& request)
     }
     // IPv4
     struct in_addr in4;
-    std::string strIn4 = request.params[3].get_str();
+    std::string strIn4 = request.params[2].get_str();
     if (strIn4.empty()) {
         std::string strError = "Invalid - missing IPv4 address";
         LogPrintf("%s: %s\n", __func__, strError);
@@ -3880,16 +3857,11 @@ UniValue registerbitname(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_MISC_ERROR, strError);
     }
     // Fee
-    CAmount nFee = AmountFromValue(request.params[4]);
+    CAmount nFee = AmountFromValue(request.params[3]);
     if (nFee <= 0) {
         std::string strError = "Invalid fee amount";
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
-    }
-    // Destination address
-    CTxDestination dest = DecodeDestination(request.params[5].get_str());
-    if (!IsValidDestination(dest)) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid destination address");
     }
 
     EnsureWalletIsUnlocked(pwallet);
@@ -3899,7 +3871,7 @@ UniValue registerbitname(const JSONRPCRequest& request)
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!pwallet->RegisterBitName(tx, strFail, strName, sok, commitment, in4, nFee, request.params[5].get_str()))
+    if (!pwallet->RegisterBitName(tx, strFail, strName, commitment, in4, nFee))
     {
         LogPrintf("%s: %s\n", __func__, strFail);
         throw JSONRPCError(RPC_MISC_ERROR, strFail);
@@ -4046,7 +4018,7 @@ UniValue listmybitnamereservations(const JSONRPCRequest& request)
 
         // FIXME: is `id` included twice?
         obj.pushKV("id", bitNameReservation.nID.ToString());
-        obj.pushKV("commitment", bitNameReservation.hashedName.ToString());
+        obj.pushKV("commitment", bitNameReservation.commitment.ToString());
         obj.pushKV("creationtxid", bitNameReservation.txid.ToString());
 
         ar.push_back(obj);
@@ -4099,7 +4071,7 @@ UniValue listmybitnames(const JSONRPCRequest& request)
         if (!pbitnametree->GetBitName(o.tx->nAssetID, bitname))
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to load bitname data!");
 
-        obj.pushKV("name", bitname.strName);
+        obj.pushKV("name_hash", bitname.name_hash.ToString());
         boost::optional<uint256> commitment = bitname.commitment.front();
         if (commitment) {
             obj.pushKV("commitment", (*commitment).ToString());
@@ -4542,8 +4514,8 @@ static const CRPCCommand commands[] =
     { "sidechain",          "createwithdrawalrefundrequest",    &createwithdrawalrefundrequest, {"id"} },
     { "sidechain",          "refundallwithdrawals",             &refundallwithdrawals,          {} },
 
-    { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "salt", "nfee", "dest"} },
-    { "BitNames",          "registerbitname",                  &registerbitname,                  {"name", "sok", "commitment", "ipv4", "nfee", "dest"} },
+    { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "nfee"} },
+    { "BitNames",          "registerbitname",                  &registerbitname,                  {"name", "commitment", "ipv4", "nfee"} },
     { "BitNames",          "updatebitname",                    &updatebitname,                    {"name", "commitment", "ipv4", "nfee", "dest"} },
     { "BitNames",          "listmybitnamereservations",        &listmybitnamereservations,       {} },
     { "BitNames",          "listmybitnames",                   &listmybitnames,                  {} },

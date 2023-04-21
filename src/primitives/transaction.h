@@ -206,7 +206,7 @@ struct CMutableTransaction;
  *   - CTxWitness wit;
  * - uint32_t nLockTime
  * - uint256 commitment
- * - string name (ignored for reservations)
+ * - uint256 name_hash (ignored for reservations)
  * - uint256 sok (only used for registrations)
  * - bool fIn4 (only used for registrations, to register an ipv4 addr)
  * - in_addr in4 (only used for registrations)
@@ -266,7 +266,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         tx.fCommitment = true;
         s >> tx.fIn4;
         s >> tx.commitment;
-        s >> tx.name;
+        s >> tx.name_hash;
         s >> tx.sok;
         uint32_t in4;
         ::Unserialize(s, in4);
@@ -320,7 +320,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
         s << tx.fIn4;
         s << tx.commitment;
-        s << tx.name;
+        s << tx.name_hash;
         s << tx.sok;
         s << ntohl(tx.in4.s_addr);
     } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
@@ -366,7 +366,7 @@ public:
     const bool fCommitment = false;
     const bool fIn4 = false;
     const uint256 commitment = uint256();
-    const std::string name = "";
+    const uint256 name_hash = uint256();
     // statement of knowledge for registering BitName
     const uint256 sok = uint256();
     const in_addr in4 = { .s_addr = 0 };
@@ -458,7 +458,7 @@ struct CMutableTransaction
     bool fCommitment = false;
     bool fIn4 = false;
     uint256 commitment = uint256();
-    std::string name = "";
+    uint256 name_hash = uint256();
     uint256 sok = uint256();
     in_addr in4 = { .s_addr = 0 };
 

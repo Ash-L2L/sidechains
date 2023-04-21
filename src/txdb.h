@@ -164,12 +164,11 @@ class BitNameReservationDB : public CDBWrapper
 {
 public:
     BitNameReservationDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+    bool WriteBitNameReservation(const BitNameReservation& reservation);
     bool WriteBitNameReservations(const std::vector<BitNameReservation>& vBitNameReservation);
 
     std::vector<BitNameReservation> GetBitNameReservations();
 
-    bool GetLastReservationID(uint256& nID);
-    bool WriteLastReservationID(const uint256 nID);
     bool GetBitNameReservation(const uint256 nID, BitNameReservation& bitNameReservation);
 
     bool RemoveReservation(const uint256 nID);

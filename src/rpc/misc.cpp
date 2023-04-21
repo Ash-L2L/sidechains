@@ -823,8 +823,7 @@ UniValue listbitnames(const JSONRPCRequest& request)
     UniValue result(UniValue::VARR);
     for (const BitName& b : vBitName) {
         UniValue obj(UniValue::VOBJ);
-        obj.pushKV("id", b.nID.ToString());
-        obj.pushKV("name", b.strName);
+        obj.pushKV("name_hash", b.name_hash.ToString());
         boost::optional<uint256> commitment = b.commitment.front();
         if (commitment) {
             obj.pushKV("commitment", (*commitment).ToString());
@@ -861,15 +860,18 @@ UniValue resolvebitname(const JSONRPCRequest& request)
     if (strBitName.empty())
         throw JSONRPCError(RPC_MISC_ERROR, "Invalid BitName provided");
 
-
+    uint256 name_hash;
+    const unsigned char* name_ptr =
+        reinterpret_cast<const unsigned char*>(strBitName.c_str());
+    CHash256().Write(name_ptr, strBitName.size())
+              .Finalize((unsigned char*) &name_hash);
     BitName bitname;
-    if (!pbitnametree->GetBitName(strBitName, bitname)) {
+    if (!pbitnametree->GetBitName(name_hash, bitname)) {
         throw JSONRPCError(RPC_MISC_ERROR, "BitName not found");
     }
 
     UniValue result(UniValue::VOBJ);
-    result.pushKV("id", bitname.nID.ToString());
-    result.pushKV("name", bitname.strName);
+    result.pushKV("name_hash", bitname.name_hash.ToString());
     boost::optional<uint256> commitment = bitname.commitment.front();
         if (commitment) {
             result.pushKV("commitment", (*commitment).ToString());
@@ -905,7 +907,7 @@ UniValue listbitnamereservations(const JSONRPCRequest& request)
     for (const BitNameReservation& b : vBitnameReservation) {
         UniValue obj(UniValue::VOBJ);
         obj.pushKV("id", b.nID.ToString());
-        obj.pushKV("hashedName", b.hashedName.ToString());
+        obj.pushKV("commitment", b.commitment.ToString());
         obj.pushKV("txid", b.txid.ToString());
         result.push_back(obj);
     }

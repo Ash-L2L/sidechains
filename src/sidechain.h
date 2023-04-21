@@ -124,8 +124,7 @@ struct BitNameObj {
  * BitName
  */
 struct BitName : public BitNameObj {
-    uint256 nID;
-    std::string strName;
+    uint256 name_hash;
     // Previous commitments are stored for rollbacks.
     // The first element is the current commitment.
     std::deque<boost::optional<uint256>> commitment {};
@@ -141,8 +140,7 @@ struct BitName : public BitNameObj {
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(nID);
-        READWRITE(strName);
+        READWRITE(name_hash);
         READWRITE(commitment);
         READWRITE(in4);
         READWRITE(txid);
@@ -164,7 +162,7 @@ struct BitNameReservationObj {
  */
 struct BitNameReservation : public BitNameReservationObj {
     uint256 nID;
-    uint256 hashedName;
+    uint256 commitment;
     uint256 txid;
 
     ADD_SERIALIZE_METHODS
@@ -172,7 +170,7 @@ struct BitNameReservation : public BitNameReservationObj {
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nID);
-        READWRITE(hashedName);
+        READWRITE(commitment);
         READWRITE(txid);
     }
 };

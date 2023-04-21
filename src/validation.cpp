@@ -1716,12 +1716,25 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         // Undo BitNameDB updates
         if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
             // get the bitname ID
-            const COutPoint& lastOutpoint = tx.vin.back().prevout;
-            const Coin& lastInputCoin = view.AccessCoin(lastOutpoint);
+            // use the tx undo to resolve the bitname ID
+            CTxUndo &txundo = blockUndo.vtxundo[i-1];
+            const Coin& lastInputCoin = txundo.vprevout.back();
 
             BitName bitname;
             if (!pbitnametree->GetBitName(lastInputCoin.nAssetID, bitname)) {
                 error("DisconnectBlock(): Failed to locate BitNameDB BitName!");
+                // FIXME: remove
+                if (!lastInputCoin.fBitName)
+                    std::cout << "Failed to get last input coin" << std::endl;
+                std::cout << "Missing BitName "
+                          << lastInputCoin.nAssetID.ToString()
+                          << std::endl;
+                std::vector<BitName> vBitnames = pbitnametree->GetBitNames();
+                for (const BitName& bn : vBitnames) {
+                    std::cout << "Found BitName "
+                              << bn.name_hash.ToString()
+                              << std::endl;
+                }
                 return DISCONNECT_FAILED;
             }
 
@@ -1734,7 +1747,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
             }
             bitname.txid.pop_front();
 
-            if (!pbitnametree->RemoveBitName(tx.name)) {
+            if (!pbitnametree->RemoveBitName(tx.name_hash)) {
                 error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
                 return DISCONNECT_FAILED;
             }
@@ -1745,24 +1758,33 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         }
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             // Undo BitName creation & revert asset ID #
-            // A bitname registration must reveal the `name` parameter
-            if (!tx.name.empty()) {
+            // A bitname registration must reveal the `name_hash` parameter
+            if (tx.name_hash != uint256()) {
                 // BitName Registration
-                if (!pbitnametree->RemoveBitName(tx.name)) {
+                if (!pbitnametree->RemoveBitName(tx.name_hash)) {
                     error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
                     return DISCONNECT_FAILED;
                 }
-            } else {
-                // BitName Reservation
-                uint256 nBitNameReservationIDLast = uint256();
-                pbitnamereservationtree->GetLastReservationID(nBitNameReservationIDLast);
-                arith_uint256 nBitNameReservationIDLast_pred = UintToArith256(nBitNameReservationIDLast);
-                nBitNameReservationIDLast_pred--;
-                if (!pbitnamereservationtree->WriteLastReservationID(ArithToUint256(nBitNameReservationIDLast_pred))) {
-                    error("DisconnectBlock(): Failed to undo BitNameReservationDB BitName Reservation ID #!");
+                // get the reservation ID
+                // use the tx undo to resolve the reservation ID
+                CTxUndo &txundo = blockUndo.vtxundo[i-1];
+                const Coin& lastInputCoin = txundo.vprevout.back();
+                const CTxIn& lastInput = tx.vin.back();
+
+                BitNameReservation reservation;
+                reservation.nID = lastInputCoin.nAssetID;
+                reservation.commitment = lastInputCoin.commitment;
+                reservation.txid = lastInput.prevout.hash;
+
+                if (!pbitnamereservationtree->WriteBitNameReservation(reservation)) {
+                    error("Failed to write BitNameReservation index!");
                     return DISCONNECT_FAILED;
                 }
-                if (!pbitnamereservationtree->RemoveReservation(nBitNameReservationIDLast)) {
+
+            } else {
+                // BitName Reservation
+                uint256 nBitNameReservationID = tx.GetHash();
+                if (!pbitnamereservationtree->RemoveReservation(nBitNameReservationID)) {
                     error("DisconnectBlock(): Failed to remove BitNameReservationDB BitName Reservation!");
                     return DISCONNECT_FAILED;
                 }
@@ -2373,18 +2395,12 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                                  REJECT_INVALID, "bad-asset-vout-small");
             }
 
-            // If the `name` field is present, this is a bitname registration
-            if (!tx.name.empty()) {
+            // If the `name_hash` field is present, this is a bitname
+            // registration
+            if (tx.name_hash != uint256()) {
                 // BitName registration
-                uint256 nBitNameID;
-                const unsigned char* name_ptr =
-                    reinterpret_cast<const unsigned char*>(tx.name.c_str());
-                CHash256().Write(name_ptr, tx.name.size())
-                        .Finalize((unsigned char*) &nBitNameID);
-
                 BitName bitname;
-                bitname.nID = nBitNameID;
-                bitname.strName = tx.name;
+                bitname.name_hash = tx.name_hash;
                 bitname.commitment.push_front(tx.commitment);
                 boost::optional<in_addr_t> in4 =
                     // workaround for false positive with -Wmaybe-uninitialized
@@ -2396,27 +2412,24 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 bitname.in4.push_front(in4);
                 bitname.txid.push_front(tx.GetHash());
 
-                mapBitName.insert({bitname.nID, bitname});
+                mapBitName.insert({bitname.name_hash, bitname});
+
+                // remove reservation
+                const CTxIn& reservationInput = tx.vin.back();
+                const uint256 reservationID = reservationInput.prevout.hash;
+                if (!pbitnamereservationtree->RemoveReservation(reservationID))
+                    return state.Error("ConnectBlock(): Failed to remove BitNameReservationDB BitName Reservation!");
 
                 // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
-                nNewAssetID = bitname.nID;
+                nNewAssetID = bitname.name_hash;
             } else {
                 // BitName reservation
-                uint256 nBitNameReservationIDLast = uint256();
-                pbitnamereservationtree->GetLastReservationID(nBitNameReservationIDLast);
-
                 BitNameReservation bitNameReservation;
-                arith_uint256 nBitNameReservationIDLast_tmp = UintToArith256(nBitNameReservationIDLast);
-                nBitNameReservationIDLast_tmp++;
-                bitNameReservation.nID = ArithToUint256(nBitNameReservationIDLast_tmp);
-                bitNameReservation.hashedName = tx.commitment;
+                bitNameReservation.nID = tx.GetHash();
+                bitNameReservation.commitment = tx.commitment;
                 bitNameReservation.txid = tx.GetHash();
 
                 vBitNameReservation.push_back(bitNameReservation);
-
-                // Update latest BitNameReservation ID #
-                if (!fJustCheck && !pbitnamereservationtree->WriteLastReservationID(bitNameReservation.nID))
-                    return error("%s: Failed to update last BitName Reservation ID #!\n", __func__);
 
                 // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
                 // FIXME: is this correct?
@@ -2450,7 +2463,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             }
             bitname.txid.push_front(tx.GetHash());
 
-            mapBitName.insert({bitname.nID, bitname});
+            mapBitName.insert({bitname.name_hash, bitname});
 
         }
 
@@ -2470,7 +2483,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         data.nAssetID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
         data.txid = tx.GetHash();
         // FIXME: is this correct?
-        if (connectTrace && (amountAssetIn > 0 || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION))
+        if (connectTrace && (amountAssetIn > 0
+                            || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION
+                            || tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION))
             connectTrace->SetBitNameData(tx.GetHash(), data);
     }
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
@@ -4985,6 +5000,7 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
             continue;
 
         uint256 nAssetID = uint256();
+        uint256 nNewAssetID = uint256();
 
         for (size_t x = 0; x < tx->vin.size(); x++) {
             bool fBitNameReservation = false;
@@ -4997,8 +5013,19 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
             if (fBitName)
                 nBitNameN = x;
         }
+
+        if (tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+            if (tx->name_hash != uint256()) {
+                // registration
+                nNewAssetID = tx->name_hash;
+            } else {
+                // reservation
+                nNewAssetID = tx->GetHash();
+            }
+        }
+
         // Pass check = true as every addition may be an overwrite.
-        AddCoins(inputs, *tx, pindex->nHeight, nAssetID, amountAssetIn, nBitNameN, uint256(), true);
+        AddCoins(inputs, *tx, pindex->nHeight, nAssetID, amountAssetIn, nBitNameN, nNewAssetID, true);
     }
     return true;
 }
