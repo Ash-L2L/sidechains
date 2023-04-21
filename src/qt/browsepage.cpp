@@ -12,6 +12,7 @@
 #include <QTableWidgetItem>
 
 #include <bitnamescontacts.h>
+#include <hash.h>
 #include <sidechain.h>
 #include <txdb.h>
 #include <uint256.h>
@@ -94,7 +95,7 @@ void BrowsePage::Update()
             return;
         }
 
-        QString name = QString::fromStdString(bitname.strName);
+        QString name = QString::fromStdString(bitname.name_hash.ToString());
 
         // Add to table
         QTableWidgetItem* nameItem = new QTableWidgetItem(name);
@@ -124,8 +125,12 @@ bool BrowsePage::Resolve(const std::string& strName)
 {
     ui->textBrowser->clear();
 
+    // Convert name to bitname ID
+    uint256 id;
+    CHash256().Write((unsigned char*)&strName[0], strName.size()).Finalize((unsigned char*)&id);
+
     BitName bitname;
-    if (!pbitnametree->GetBitName(strName, bitname)) {
+    if (!pbitnametree->GetBitName(id, bitname)) {
         QMessageBox::critical(this, tr("Failed to lookup BitName!"),
             tr("BitName not found! Double check the name you have entered and try again!\n"),
             QMessageBox::Ok);
@@ -133,8 +138,7 @@ bool BrowsePage::Resolve(const std::string& strName)
     }
 
     QString result = "";
-    result += "Name: " + QString::fromStdString(bitname.strName);
-    result += "\nID: " + QString::fromStdString(bitname.nID.ToString());
+    result += "Name hash: " + QString::fromStdString(bitname.name_hash.ToString());
     result += "\nTxID: " + QString::fromStdString(bitname.txid.front().ToString());
 
     boost::optional<uint256> commitment = bitname.commitment.front();

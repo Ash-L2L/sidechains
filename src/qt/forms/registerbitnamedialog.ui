@@ -32,13 +32,6 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEditSalt">
-         <property name="placeholderText">
-          <string>Enter Salt</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QLineEdit" name="lineEditReserveAddress">
          <property name="placeholderText">
           <string>Enter Address</string>
@@ -112,13 +105,6 @@
         <widget class="QLineEdit" name="lineEditRegisterName">
          <property name="placeholderText">
           <string>Enter BitName</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="lineEditSOK">
-         <property name="placeholderText">
-          <string>Enter SOK</string>
          </property>
         </widget>
        </item>

@@ -8,6 +8,7 @@
 #include <QMessageBox>
 
 #include <bitnamescontacts.h>
+#include <hash.h>
 #include <txdb.h>
 #include <uint256.h>
 #include <validation.h>
@@ -26,15 +27,18 @@ AddContactDialog::~AddContactDialog()
 
 void AddContactDialog::on_pushButtonAdd_clicked()
 {
-    std::string strName = ui->lineEditName->text().toStdString();
+    std::string str = ui->lineEditName->text().toStdString();
+
+    uint256 id;
+    CHash256().Write((unsigned char*)&str[0], str.size()).Finalize((unsigned char*)&id);
 
     // Get BitNameDB data
     BitName bitname;
-    if (!pbitnametree->GetBitName(strName, bitname)) {
+    if (!pbitnametree->GetBitName(id, bitname)) {
         return; // todo messagebox
     }
 
-    bitnamesContacts.AddContact(bitname.nID);
+    bitnamesContacts.AddContact(bitname.name_hash);
 
     QMessageBox::information(this, tr("Contact added!"),
         tr("BitNames contact saved!\n"),

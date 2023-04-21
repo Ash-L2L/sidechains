@@ -33,14 +33,6 @@ void RegisterBitNameDialog::on_pushButtonReserve_clicked()
             tr("Invalid name!\n"),
             QMessageBox::Ok);
     }
-
-    // Salt
-    uint256 salt = uint256S(ui->lineEditSalt->text().toStdString());
-    if (salt.IsNull()) {
-        QMessageBox::critical(this, tr("Failed to reserve BitName!"),
-            tr("Invalid salt!\n"),
-            QMessageBox::Ok);
-    }
     // Fee
     CAmount nFee = ui->amountReserveFee->value();
     if (nFee <= 0) {
@@ -69,7 +61,7 @@ void RegisterBitNameDialog::on_pushButtonReserve_clicked()
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!vpwallets[0]->ReserveBitName(tx, strFail, strName, salt, nFee, ui->lineEditReserveAddress->text().toStdString()))
+    if (!vpwallets[0]->ReserveBitName(tx, strFail, strName, nFee))
     {
         QMessageBox::critical(this, tr("Failed to reserve BitName!"),
             "Error: " + QString::fromStdString(strFail),
@@ -87,13 +79,6 @@ void RegisterBitNameDialog::on_pushButtonRegister_clicked()
     if (strName.empty()) {
         QMessageBox::critical(this, tr("Failed to register BitName!"),
             tr("Invalid name!\n"),
-            QMessageBox::Ok);
-    }
-    // SoK
-    uint256 sok = uint256S(ui->lineEditSOK->text().toStdString());
-    if (sok.IsNull()) {
-        QMessageBox::critical(this, tr("Failed to register BitName!"),
-            tr("Invalid SOK!\n"),
             QMessageBox::Ok);
     }
     // commitment
@@ -144,7 +129,7 @@ void RegisterBitNameDialog::on_pushButtonRegister_clicked()
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!vpwallets[0]->RegisterBitName(tx, strFail, strName, sok, commitment, in4, nFee, ui->lineEditRegisterAddress->text().toStdString()))
+    if (!vpwallets[0]->RegisterBitName(tx, strFail, strName, commitment, in4, nFee))
     {
         QMessageBox::critical(this, tr("Failed to register BitName!"),
             "Error: " + QString::fromStdString(strFail),

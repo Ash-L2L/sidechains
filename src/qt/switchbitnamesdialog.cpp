@@ -105,18 +105,13 @@ void SwitchBitNamesDialog::Update()
             return;
         }
 
-        QString name = QString::fromStdString(bitname.strName);
-        QString id = QString::fromStdString(bitname.nID.ToString());
+        QString name = QString::fromStdString(bitname.name_hash.ToString());
 
         // Add to table
         QTableWidgetItem* nameItem = new QTableWidgetItem(name);
         nameItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
-        QTableWidgetItem* idItem = new QTableWidgetItem(id);
-        idItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-
         ui->tableWidgetNames->setItem(nRow /* row */, 0 /* col */, nameItem);
-        ui->tableWidgetNames->setItem(nRow /* row */, 1 /* col */, idItem);
 
         nRow++;
     }
