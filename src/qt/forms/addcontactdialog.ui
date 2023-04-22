@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>859</width>
+    <height>324</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,10 +22,14 @@
     </widget>
    </item>
    <item>
-    <widget class="QTextBrowser" name="textBrowser"/>
+    <widget class="QTextBrowser" name="textBrowser">
+     <property name="placeholderText">
+      <string>Enter BitName above</string>
+     </property>
+    </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_2">
+    <widget class="QLabel" name="labelError">
      <property name="styleSheet">
       <string notr="true">color:red</string>
      </property>
