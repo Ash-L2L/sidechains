@@ -7,23 +7,31 @@
 
 #include <uint256.h>
 
+#include <string>
 #include <vector>
+
+struct Contact
+{
+    uint256 id;
+    std::string name;
+};
 
 class BitNamesContacts
 {
 public:
     BitNamesContacts();
 
-    void AddContact(const uint256& id);
-    void SetContacts(const std::vector<uint256> vContact);
+    void AddContact(const uint256& id, const std::string& name);
+    void SetContacts(const std::vector<Contact> vContact);
     void SetCurrentID(const uint256 id);
+    bool GetName(const uint256& id, std::string& strName);
 
-    std::vector<uint256> GetContacts() const;
+    std::vector<Contact> GetContacts() const;
     uint256 GetCurrentID() const;
 
 private:
-    // My contact's ID's
-    std::vector<uint256> vContactID;
+    // My contacts
+    std::vector<Contact> vContact;
 
     // My current ID
     uint256 current;

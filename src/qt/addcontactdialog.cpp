@@ -38,7 +38,7 @@ void AddContactDialog::on_pushButtonAdd_clicked()
         return; // todo messagebox
     }
 
-    bitnamesContacts.AddContact(bitname.name_hash);
+    bitnamesContacts.AddContact(id, str);
 
     QMessageBox::information(this, tr("Contact added!"),
         tr("BitNames contact saved!\n"),

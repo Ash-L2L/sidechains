@@ -49,25 +49,30 @@ void ContactsPage::Update()
 
     ui->tableWidgetContacts->setRowCount(0);
 
-    std::vector<uint256> vContact = bitnamesContacts.GetContacts();
+    std::vector<Contact> vContact = bitnamesContacts.GetContacts();
 
     int nRow = 0;
-    for (const uint256& u : vContact) {
+    for (const Contact& c : vContact) {
         ui->tableWidgetContacts->insertRow(nRow);
 
         // Get BitNameDB data
         BitName bitname;
-        if (!pbitnametree->GetBitName(u, bitname)) {
+        if (!pbitnametree->GetBitName(c.id, bitname)) {
             return;
         }
 
-        QString name = QString::fromStdString(bitname.name_hash.ToString());
+        QString id = QString::fromStdString(c.id.ToString());
+        QString name = QString::fromStdString(c.name);
 
         // Add to table
         QTableWidgetItem* nameItem = new QTableWidgetItem(name);
         nameItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
+        QTableWidgetItem* idItem = new QTableWidgetItem(id);
+        idItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
         ui->tableWidgetContacts->setItem(nRow /* row */, 0 /* col */, nameItem);
+        ui->tableWidgetContacts->setItem(nRow /* row */, 1 /* col */, idItem);
 
         nRow++;
     }

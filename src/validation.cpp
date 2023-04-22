@@ -5869,7 +5869,7 @@ void LoadBitNamesContacts()
         return;
     }
 
-    std::vector<uint256> vContact;
+    std::vector<Contact> vContact;
     uint256 current;
     try {
         int nVersionRequired, nVersionThatWrote;
@@ -5882,11 +5882,11 @@ void LoadBitNamesContacts()
         int nContact = 0;
         filein >> nContact;
         for (int i = 0; i < nContact; i++) {
-            uint256 hash;
-            filein >> hash;
-            vContact.push_back(hash);
+            Contact contact;
+            filein >> contact.id;
+            filein >> contact.name;
+            vContact.push_back(contact);
         }
-
         filein >> current;
     }
     catch (const std::exception& e) {
@@ -5900,7 +5900,7 @@ void LoadBitNamesContacts()
 
 void DumpBitNamesContacts()
 {
-    std::vector<uint256> vContact = bitnamesContacts.GetContacts();
+    std::vector<Contact> vContact = bitnamesContacts.GetContacts();
     uint256 current = bitnamesContacts.GetCurrentID();
 
     int nContact = vContact.size();
@@ -5916,11 +5916,11 @@ void DumpBitNamesContacts()
         fileout << CLIENT_VERSION; // version that wrote the file
 
         fileout << nContact;
-        for (const uint256& u : vContact) {
-            fileout << u;
+        for (const Contact& c : vContact) {
+            fileout << c.id;
+            fileout << c.name;
         }
         fileout << current;
-
     }
     catch (const std::exception& e) {
         LogPrintf("%s: Error writing BitName contacts: %s", __func__, e.what());
