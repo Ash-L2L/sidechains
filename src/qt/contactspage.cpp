@@ -21,6 +21,8 @@ ContactsPage::ContactsPage(const PlatformStyle *_platformStyle, QWidget *parent)
 {
     ui->setupUi(this);
 
+    ui->tableWidgetContacts->horizontalHeader()->setStretchLastSection(true);
+
     Update();
 }
 
@@ -41,6 +43,8 @@ void ContactsPage::on_pushButtonSwitch_clicked()
 {
     SwitchBitNamesDialog dialog;
     dialog.exec();
+
+    Update();
 }
 
 void ContactsPage::Update()
@@ -75,5 +79,13 @@ void ContactsPage::Update()
         ui->tableWidgetContacts->setItem(nRow /* row */, 1 /* col */, idItem);
 
         nRow++;
+    }
+
+    std::string strName = "";
+    uint256 current = bitnamesContacts.GetCurrentID();
+    if (bitnamesContacts.GetName(current, strName)) {
+        ui->labelCurrent->setText(QString::fromStdString(strName));
+    } else {
+        ui->labelCurrent->setText("Press switch to create your first BitName");
     }
 }
