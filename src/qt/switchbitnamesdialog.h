@@ -7,6 +7,10 @@
 
 #include <QDialog>
 
+QT_BEGIN_NAMESPACE
+class QTableWidgetItem;
+QT_END_NAMESPACE
+
 namespace Ui {
 class SwitchBitNamesDialog;
 }
@@ -28,6 +32,7 @@ private Q_SLOTS:
     void on_pushButtonRegister_clicked();
     void on_pushButtonClaim_clicked();
     void on_pushButtonRecover_clicked();
+    void on_tableWidgetNames_itemDoubleClicked(QTableWidgetItem* item);
 };
 
 #endif // SWITCHBITNAMESDIALOG_H
