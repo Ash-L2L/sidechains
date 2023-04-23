@@ -69,6 +69,9 @@ void BrowsePage::on_lineEditSearch_returnPressed()
         QMessageBox::critical(this, tr("Failed to lookup BitName!"),
             tr("You must enter something!\n"),
             QMessageBox::Ok);
+
+        ui->textBrowser->clear();
+
         return;
     }
 
@@ -104,6 +107,7 @@ void BrowsePage::Update()
 
         QTableWidgetItem* idItem = new QTableWidgetItem(id);
         idItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
         ui->tableWidgetContacts->setItem(nRow /* row */, 0 /* col */, nameItem);
 
         nRow++;
