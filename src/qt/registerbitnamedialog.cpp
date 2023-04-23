@@ -8,6 +8,8 @@
 #include <QMessageBox>
 
 #include <base58.h>
+#include <bitnamescontacts.h>
+#include <hash.h>
 #include <primitives/transaction.h>
 #include <validation.h>
 #include <wallet/wallet.h>
@@ -135,6 +137,11 @@ void RegisterBitNameDialog::on_pushButtonRegister_clicked()
             "Error: " + QString::fromStdString(strFail),
             QMessageBox::Ok);
     } else {
+        uint256 id;
+        CHash256().Write((unsigned char*)&strName[0], strName.size()).Finalize((unsigned char*)&id);
+
+        bitnamesContacts.AddContact(id, strName);
+
         QMessageBox::information(this, tr("Registered BitName!"),
             "TxID:\n" + QString::fromStdString(tx->GetHash().ToString()),
             QMessageBox::Ok);
