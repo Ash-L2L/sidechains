@@ -76,9 +76,9 @@ uint256 CTransaction::GetWitnessHash() const
 }
 
 /* For backward compatibility, the hash is initialized to 0. TODO: remove the need for this default constructor entirely. */
-CTransaction::CTransaction() : vin(), vout(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), commitment(), name_hash(), sok(), fIn4(false), in4({ .s_addr = 0 }), hash() {}
-CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name_hash(tx.name_hash), sok(tx.sok), in4(tx.in4), hash(ComputeHash()) {}
-CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name_hash(tx.name_hash), sok(tx.sok), in4(tx.in4), hash(ComputeHash()) {}
+CTransaction::CTransaction() : vin(), vout(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), commitment(), name_hash(), sok(), fIn4(false), in4({ .s_addr = 0 }), cpk(), hash() {}
+CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name_hash(tx.name_hash), sok(tx.sok), in4(tx.in4), cpk(tx.cpk), hash(ComputeHash()) {}
+CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name_hash(tx.name_hash), sok(tx.sok), in4(tx.in4), cpk(tx.cpk), hash(ComputeHash()) {}
 
 CAmount CTransaction::GetValueOut() const
 {

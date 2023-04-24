@@ -215,12 +215,18 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
         if (tx.fIn4) {
             entry.pushKV("ip4_addr", std::string(inet_ntoa(tx.in4)));
         }
+        if (tx.cpk) {
+            entry.pushKV("pubkey", HexStr((*tx.cpk).begin(), (*tx.cpk).end()));
+        }
     } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
         if (tx.fCommitment) {
             entry.pushKV("commitment", tx.commitment.ToString());
         }
         if (tx.fIn4) {
             entry.pushKV("ip4_addr", std::string(inet_ntoa(tx.in4)));
+        }
+        if (tx.cpk) {
+            entry.pushKV("pubkey", HexStr((*tx.cpk).begin(), (*tx.cpk).end()));
         }
     }
 

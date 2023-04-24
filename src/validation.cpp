@@ -1742,6 +1742,9 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
             if (tx.fIn4) {
                 bitname.in4.pop_front();
             }
+            if (tx.cpk) {
+                bitname.cpk.pop_front();
+            }
             bitname.txid.pop_front();
 
             if (!pbitnametree->RemoveBitName(tx.name_hash)) {
@@ -2407,6 +2410,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                     in4 = tx.in4.s_addr;
                 }
                 bitname.in4.push_front(in4);
+                if (tx.cpk) {
+                    bitname.cpk.push_front(tx.cpk);
+                }
                 bitname.txid.push_front(tx.GetHash());
 
                 mapBitName.insert({bitname.name_hash, bitname});
@@ -2457,6 +2463,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             }
             if (tx.fIn4) {
                 bitname.in4.push_front(tx.in4.s_addr);
+            }
+            if (tx.cpk) {
+                bitname.cpk.push_back(tx.cpk);
             }
             bitname.txid.push_front(tx.GetHash());
 

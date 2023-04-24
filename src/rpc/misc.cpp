@@ -834,6 +834,10 @@ UniValue listbitnames(const JSONRPCRequest& request)
             in4.s_addr = *opt_in4;
             obj.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
         }
+        if (b.cpk.front()) {
+            CPubKey cpk = *b.cpk.front();
+            obj.pushKV("pubkey", HexStr(cpk.begin(), cpk.end()));
+        }
         obj.pushKV("txid", b.txid.front().ToString());
         result.push_back(obj);
     }
@@ -881,6 +885,10 @@ UniValue resolvebitname(const JSONRPCRequest& request)
             struct in_addr in4;
             in4.s_addr = *opt_in4;
             result.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
+        }
+        if (bitname.cpk.front()) {
+            CPubKey cpk = *bitname.cpk.front();
+            result.pushKV("pubkey", HexStr(cpk.begin(), cpk.end()));
         }
         result.pushKV("txid", bitname.txid.front().ToString());
 

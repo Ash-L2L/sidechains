@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <amount.h>
 #include <netaddress.h>
+#include <pubkey.h>
 #include <script/script.h>
 #include <serialize.h>
 #include <uint256.h>
@@ -210,7 +211,9 @@ struct CMutableTransaction;
  * - uint256 sok (only used for registrations)
  * - bool fIn4 (only used for registrations, to register an ipv4 addr)
  * - in_addr in4 (only used for registrations)
- *
+ * - bool fCPK (only used for registrations, to register a compressed pubkey)
+ * - CPubKey cpk (only used for registrations)
+ * 
  *  * Update BitName version 11 tx:
  * - int32_t nVersion
  * - unsigned char dummy = 0x00
@@ -222,8 +225,10 @@ struct CMutableTransaction;
  * - uint32_t nLockTime
  * - bool fCommitment (used to update the commitment)
  * - bool fIn4 (used to update ipv4 addr)
+ * - bool fCPK (used to update cpk)
  * - uint256 commitment
  * - in_addr in4
+ * - CPubKey cpk
  */
 template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
@@ -271,11 +276,20 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         uint32_t in4;
         ::Unserialize(s, in4);
         tx.in4.s_addr = htonl(in4);
+        bool fCPK;
+        s >> fCPK;
+        if (fCPK) {
+            CPubKey cpk;
+            ::Unserialize(s, cpk);
+            tx.cpk = cpk;
+        }
     }
 
     if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
         s >> tx.fCommitment;
         s >> tx.fIn4;
+        bool fCPK;
+        s >> fCPK;
         if (tx.fCommitment) {
             s >> tx.commitment;
         }
@@ -283,6 +297,11 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
             uint32_t in4;
             ::Unserialize(s, in4);
             tx.in4.s_addr = htonl(in4);
+        }
+        if (fCPK) {
+            CPubKey cpk;
+            ::Unserialize(s, cpk);
+            tx.cpk = cpk;
         }
     }
 }
@@ -323,14 +342,26 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << tx.name_hash;
         s << tx.sok;
         s << ntohl(tx.in4.s_addr);
+        if (tx.cpk) {
+            s << true;
+            s << (*tx.cpk);
+        } else {
+            s << false;
+        }
+
     } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
         s << tx.fCommitment;
         s << tx.fIn4;
+        bool fCPK = tx.cpk ? true : false; 
+        s << fCPK;
         if (tx.fCommitment) {
             s << tx.commitment;
         }
         if (tx.fIn4) {
             s << ntohl(tx.in4.s_addr);
+        }
+        if (fCPK) {
+            s << (*tx.cpk);
         }
     }
 }
@@ -370,6 +401,7 @@ public:
     // statement of knowledge for registering BitName
     const uint256 sok = uint256();
     const in_addr in4 = { .s_addr = 0 };
+    const boost::optional<CPubKey> cpk = boost::none;
 
 private:
     /** Memory only. */
@@ -461,6 +493,7 @@ struct CMutableTransaction
     uint256 name_hash = uint256();
     uint256 sok = uint256();
     in_addr in4 = { .s_addr = 0 };
+    boost::optional<CPubKey> cpk = boost::none;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

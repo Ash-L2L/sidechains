@@ -4082,6 +4082,10 @@ UniValue listmybitnames(const JSONRPCRequest& request)
             in4.s_addr = *opt_in4;
             obj.pushKV("ip4_addr", std::string(inet_ntoa(in4)));
         }
+        if (bitname.cpk.front()) {
+            CPubKey cpk = *bitname.cpk.front();
+            obj.pushKV("pubkey", HexStr(cpk.begin(), cpk.end()));
+        }
         obj.pushKV("creationtxid", bitname.txid.front().ToString());
 
         ar.push_back(obj);

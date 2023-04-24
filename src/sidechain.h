@@ -132,6 +132,10 @@ struct BitName : public BitNameObj {
     // The first element is the current in_addr.
     // FIXME: use in_addr instead
     std::deque<boost::optional<in_addr_t>> in4 {};
+    // Previous CPubKeys are stored for rollbacks.
+    // The first element is the current cpk.
+    std::deque<boost::optional<CPubKey>> cpk {};
+
     // Previous txids are stored for rollbacks.
     // The first element is the current txid.
     std::deque<uint256> txid {};
@@ -143,6 +147,7 @@ struct BitName : public BitNameObj {
         READWRITE(name_hash);
         READWRITE(commitment);
         READWRITE(in4);
+        READWRITE(cpk);
         READWRITE(txid);
     }
 };

@@ -181,7 +181,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-update-bitname-vout-size");
     
     // Update BitName transactions must update at least 1 field
-    if (fUpdateBitName && !(tx.fCommitment || tx.fIn4))
+    if (fUpdateBitName && !(tx.fCommitment || tx.fIn4 || tx.cpk))
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-update-bitname-no-updates");
 
     // Check for negative or overflow output values
