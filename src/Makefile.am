@@ -82,6 +82,7 @@ BITCOIN_CORE_H = \
   bloom.h \
   blockencodings.h \
   bmmcache.h \
+  bitnamescontacts.h \
   chain.h \
   chainparams.h \
   chainparamsbase.h \
@@ -197,6 +198,7 @@ libbitcoin_server_a_SOURCES = \
   bloom.cpp \
   blockencodings.cpp \
   bmmcache.cpp \
+  bitnamescontacts.cpp \
   chain.cpp \
   checkpoints.cpp \
   consensus/tx_verify.cpp \

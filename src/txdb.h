@@ -185,10 +185,7 @@ public:
     std::vector<BitName> GetBitNames();
 
     bool GetBitName(const uint256 nID, BitName& bitname);
-    bool GetBitName(const std::string strName, BitName& bitname);
-
     bool RemoveBitName(const uint256 nID);
-    bool RemoveBitName(const std::string strName);
 };
 
 
