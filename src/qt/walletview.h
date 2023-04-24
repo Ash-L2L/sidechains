@@ -20,6 +20,11 @@ class SidechainPage;
 class TransactionView;
 class WalletModel;
 class AddressBookPage;
+class ActivityPage;
+class BrowsePage;
+class ContactsPage;
+class PaymailPage;
+class VerifyPage;
 
 QT_BEGIN_NAMESPACE
 class QModelIndex;
@@ -67,6 +72,12 @@ private:
     AddressBookPage *usedReceivingAddressesPage;
     SidechainPage *sidechainPage;
 
+    ActivityPage *activityPage;
+    BrowsePage *browsePage;
+    ContactsPage *contactsPage;
+    PaymailPage *paymailPage;
+    VerifyPage *verifyPage;
+
     TransactionView *transactionView;
 
     QProgressDialog *progressDialog;
@@ -88,6 +99,16 @@ public Q_SLOTS:
     void gotoVerifyMessageTab(QString addr = "");
     /** Switch to sidechain page */
     void gotoSidechainPage();
+    /** Switch to activity page */
+    void gotoActivityPage();
+    /** Switch to browse page */
+    void gotoBrowsePage();
+    /** Switch to contacts page */
+    void gotoContactsPage();
+    /** Switch to paymail page */
+    void gotoPaymailPage();
+    /** Switch to verify page */
+    void gotoVerifyPage();
 
     /** Show incoming transaction notification for new transactions.
 

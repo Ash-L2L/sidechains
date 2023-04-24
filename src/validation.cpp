@@ -8,6 +8,7 @@
 #include <arith_uint256.h>
 #include <base58.h>
 #include <bmmcache.h>
+#include <bitnamescontacts.h>
 #include <chain.h>
 #include <chainparams.h>
 #include <checkpoints.h>
@@ -275,6 +276,8 @@ private:
 CCriticalSection cs_main;
 
 BMMCache bmmCache;
+
+BitNamesContacts bitnamesContacts;
 
 BlockMap& mapBlockIndex = g_chainstate.mapBlockIndex;
 std::map<uint256, CBlockIndex*>& mapBlockMainHashIndex = g_chainstate.mapBlockMainHashIndex;
@@ -2386,7 +2389,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         uint256 nNewAssetID = uint256();
         if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             // New asset created - set asset ID # and update BitNameDB
-            
+
             if (tx.vout.size() < 1) {
                 return state.DoS(100, error("ConnectBlock(): Invalid BitName reservation/registration - vout too small"),
                                  REJECT_INVALID, "bad-asset-vout-small");
@@ -4995,10 +4998,10 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
     for (const CTransactionRef& tx : block.vtx) {
         if (tx->IsCoinBase())
             continue;
-        
+
         uint256 nAssetID = uint256();
         uint256 nNewAssetID = uint256();
-        
+
         for (size_t x = 0; x < tx->vin.size(); x++) {
             bool fBitNameReservation = false;
             bool fBitName = false;
@@ -5856,6 +5859,79 @@ void DumpBMMCache()
     RenameOver(GetDataDir() / "bmm.dat.new", GetDataDir() / "bmm.dat");
 
     LogPrintf("%s: Wrote BMM cache.\n", __func__);
+}
+
+void LoadBitNamesContacts()
+{
+    fs::path path = GetDataDir() / "bitnames.dat";
+    CAutoFile filein(fsbridge::fopen(path, "rb"), SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull()) {
+        return;
+    }
+
+    std::vector<uint256> vContact;
+    uint256 current;
+    try {
+        int nVersionRequired, nVersionThatWrote;
+        filein >> nVersionRequired;
+        filein >> nVersionThatWrote;
+        if (nVersionRequired > CLIENT_VERSION) {
+            return;
+        }
+
+        int nContact = 0;
+        filein >> nContact;
+        for (int i = 0; i < nContact; i++) {
+            uint256 hash;
+            filein >> hash;
+            vContact.push_back(hash);
+        }
+
+        filein >> current;
+    }
+    catch (const std::exception& e) {
+        LogPrintf("%s: Error reading BitNames contacts: %s", __func__, e.what());
+        return;
+    }
+
+    bitnamesContacts.SetContacts(vContact);
+    bitnamesContacts.SetCurrentID(current);
+}
+
+void DumpBitNamesContacts()
+{
+    std::vector<uint256> vContact = bitnamesContacts.GetContacts();
+    uint256 current = bitnamesContacts.GetCurrentID();
+
+    int nContact = vContact.size();
+
+    fs::path path = GetDataDir() / "bitnames.dat.new";
+    CAutoFile fileout(fsbridge::fopen(path, "wb"), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        return;
+    }
+
+    try {
+        fileout << 160000; // version required to read: 0.16.00 or later
+        fileout << CLIENT_VERSION; // version that wrote the file
+
+        fileout << nContact;
+        for (const uint256& u : vContact) {
+            fileout << u;
+        }
+        fileout << current;
+
+    }
+    catch (const std::exception& e) {
+        LogPrintf("%s: Error writing BitName contacts: %s", __func__, e.what());
+        return;
+    }
+
+    FileCommit(fileout.Get());
+    fileout.fclose();
+    RenameOver(GetDataDir() / "bitnames.dat.new", GetDataDir() / "bitnames.dat");
+
+    LogPrintf("%s: Wrote BitNames contacts.\n", __func__);
 }
 
 void LoadMainBlockCache()

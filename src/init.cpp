@@ -215,6 +215,9 @@ void Shutdown()
     // Write the BMM cache to disk
     DumpBMMCache();
 
+    // Write BitName contacts
+    DumpBitNamesContacts();
+
     // Write the users WithdrawalID cache to disk
     DumpWithdrawalIDCache();
 
@@ -1391,6 +1394,9 @@ bool AppInitMain()
 
     // Load the BMM cache from disk
     LoadBMMCache();
+
+    // Load BitName contacts
+    LoadBitNamesContacts();
 
     // Load the users WithdrawalID cache
     LoadWithdrawalIDCache();

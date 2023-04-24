@@ -77,6 +77,16 @@ public Q_SLOTS:
     void gotoVerifyMessageTab(QString addr = "");
     /** Switch to sidechain page */
     void gotoSidechainPage();
+    /** Switch to activity page */
+    void gotoActivityPage();
+    /** Switch to browse page */
+    void gotoBrowsePage();
+    /** Switch to contacts page */
+    void gotoContactsPage();
+    /** Switch to paymail page */
+    void gotoPaymailPage();
+    /** Switch to verify page */
+    void gotoVerifyPage();
 
     /** Encrypt the wallet */
     void encryptWallet(bool status);

@@ -123,6 +123,11 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
     openAction(0),
     showHelpMessageAction(0),
     sidechainAction(0),
+    activityAction(0),
+    browseAction(0),
+    contactsAction(0),
+    paymailAction(0),
+    verifyAction(0),
     showHashCalcDialogAction(0),
     showBlockExplorerDialogAction(0),
     trayIcon(0),
@@ -334,9 +339,59 @@ void BitcoinGUI::createActions()
     historyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
     tabGroup->addAction(historyAction);
 
+    activityAction = new QAction(platformStyle->SingleColorIcon(":/icons/activity"), tr("&Activity"), this);
+    activityAction->setStatusTip(tr("Activity"));
+    activityAction->setToolTip(activityAction->statusTip());
+    activityAction->setCheckable(true);
+    activityAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+    tabGroup->addAction(activityAction);
+
+    browseAction = new QAction(platformStyle->SingleColorIcon(":/icons/browse"), tr("&Browse"), this);
+    browseAction->setStatusTip(tr("Browse"));
+    browseAction->setToolTip(browseAction->statusTip());
+    browseAction->setCheckable(true);
+    browseAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
+    tabGroup->addAction(browseAction);
+
+    contactsAction = new QAction(platformStyle->SingleColorIcon(":/icons/address-book"), tr("&Contacts"), this);
+    contactsAction->setStatusTip(tr("Contacts"));
+    contactsAction->setToolTip(contactsAction->statusTip());
+    contactsAction->setCheckable(true);
+    contactsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
+    tabGroup->addAction(contactsAction);
+
+    paymailAction = new QAction(platformStyle->SingleColorIcon(":/icons/paymail"), tr("&Paymail"), this);
+    paymailAction->setStatusTip(tr("Paymail"));
+    paymailAction->setToolTip(paymailAction->statusTip());
+    paymailAction->setCheckable(true);
+    paymailAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_9));
+    tabGroup->addAction(paymailAction);
+
+    verifyAction = new QAction(platformStyle->SingleColorIcon(":/icons/verifyname"), tr("&Verify"), this);
+    verifyAction->setStatusTip(tr("Verify"));
+    verifyAction->setToolTip(verifyAction->statusTip());
+    verifyAction->setCheckable(true);
+    verifyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_0));
+    tabGroup->addAction(verifyAction);
+
 #ifdef ENABLE_WALLET
     connect(sidechainAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(sidechainAction, SIGNAL(triggered()), this, SLOT(gotoSidechainPage()));
+
+    connect(activityAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(activityAction, SIGNAL(triggered()), this, SLOT(gotoActivityPage()));
+
+    connect(browseAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(browseAction, SIGNAL(triggered()), this, SLOT(gotoBrowsePage()));
+
+    connect(contactsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(contactsAction, SIGNAL(triggered()), this, SLOT(gotoContactsPage()));
+
+    connect(paymailAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(paymailAction, SIGNAL(triggered()), this, SLOT(gotoPaymailPage()));
+
+    connect(verifyAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(verifyAction, SIGNAL(triggered()), this, SLOT(gotoVerifyPage()));
 
     // These showNormalIfMinimized are needed because Send Coins and Receive Coins
     // can be triggered from the tray menu, and need to show the GUI to be useful.
@@ -506,6 +561,11 @@ void BitcoinGUI::createToolBars()
         toolbar->addAction(receiveCoinsAction);
         toolbar->addAction(historyAction);
         toolbar->addSeparator();
+        toolbar->addAction(activityAction);
+        toolbar->addAction(browseAction);
+        toolbar->addAction(contactsAction);
+        toolbar->addAction(paymailAction);
+        toolbar->addAction(verifyAction);
         overviewAction->setChecked(true);
     }
 }
@@ -613,6 +673,11 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     usedReceivingAddressesAction->setEnabled(enabled);
     sidechainAction->setEnabled(enabled);
     openAction->setEnabled(enabled);
+    activityAction->setEnabled(enabled);
+    browseAction->setEnabled(enabled);
+    contactsAction->setEnabled(enabled);
+    paymailAction->setEnabled(enabled);
+    verifyAction->setEnabled(enabled);
 }
 
 void BitcoinGUI::createTrayIcon(const NetworkStyle *networkStyle)
@@ -763,6 +828,36 @@ void BitcoinGUI::gotoSidechainPage()
 {
     sidechainAction->setChecked(true);
     if (walletFrame) walletFrame->gotoSidechainPage();
+}
+
+void BitcoinGUI::gotoActivityPage()
+{
+    activityAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoActivityPage();
+}
+
+void BitcoinGUI::gotoBrowsePage()
+{
+    browseAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoBrowsePage();
+}
+
+void BitcoinGUI::gotoContactsPage()
+{
+    contactsAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoContactsPage();
+}
+
+void BitcoinGUI::gotoPaymailPage()
+{
+    paymailAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoPaymailPage();
+}
+
+void BitcoinGUI::gotoVerifyPage()
+{
+    verifyAction->setChecked(true);
+    if (walletFrame) walletFrame->gotoVerifyPage();
 }
 
 void BitcoinGUI::showHashCalcDialog()
