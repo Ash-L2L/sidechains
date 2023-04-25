@@ -374,6 +374,11 @@ void BitcoinGUI::createActions()
     verifyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_0));
     tabGroup->addAction(verifyAction);
 
+    // Disable tabs until complete
+    activityAction->setEnabled(false);
+    paymailAction->setEnabled(false);
+    verifyAction->setEnabled(false);
+
 #ifdef ENABLE_WALLET
     connect(sidechainAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(sidechainAction, SIGNAL(triggered()), this, SLOT(gotoSidechainPage()));
@@ -673,11 +678,12 @@ void BitcoinGUI::setWalletActionsEnabled(bool enabled)
     usedReceivingAddressesAction->setEnabled(enabled);
     sidechainAction->setEnabled(enabled);
     openAction->setEnabled(enabled);
-    activityAction->setEnabled(enabled);
     browseAction->setEnabled(enabled);
     contactsAction->setEnabled(enabled);
-    paymailAction->setEnabled(enabled);
-    verifyAction->setEnabled(enabled);
+    // TODO
+//    activityAction->setEnabled(enabled);
+//    paymailAction->setEnabled(enabled);
+//    verifyAction->setEnabled(enabled);
 }
 
 void BitcoinGUI::createTrayIcon(const NetworkStyle *networkStyle)
