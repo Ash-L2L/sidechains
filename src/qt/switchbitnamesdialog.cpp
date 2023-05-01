@@ -10,8 +10,11 @@
 #include <qt/recoverbitnamedialog.h>
 
 #include <QMessageBox>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 
 #include <base58.h>
+#include <bitnamescontacts.h>
 #include <primitives/transaction.h>
 #include <txdb.h>
 #include <validation.h>
@@ -22,7 +25,6 @@ SwitchBitNamesDialog::SwitchBitNamesDialog(QWidget *parent) :
     ui(new Ui::SwitchBitNamesDialog)
 {
     ui->setupUi(this);
-
 
     // Table style
 
@@ -105,14 +107,47 @@ void SwitchBitNamesDialog::Update()
             return;
         }
 
-        QString name = QString::fromStdString(bitname.name_hash.ToString());
+        std::string strName = "";
+        bitnamesContacts.GetName(bitname.name_hash, strName);
+
+        QString name = QString::fromStdString(strName);
+        QString id = QString::fromStdString(bitname.name_hash.ToString());
 
         // Add to table
         QTableWidgetItem* nameItem = new QTableWidgetItem(name);
         nameItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
+        QTableWidgetItem* idItem = new QTableWidgetItem(id);
+        idItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+
         ui->tableWidgetNames->setItem(nRow /* row */, 0 /* col */, nameItem);
+        ui->tableWidgetNames->setItem(nRow /* row */, 1 /* col */, idItem);
 
         nRow++;
     }
+}
+
+void SwitchBitNamesDialog::on_tableWidgetNames_itemDoubleClicked(QTableWidgetItem* item)
+{
+    if (!item)
+        return;
+
+    std::string str = item->text().toStdString();
+    if (str.empty())
+        return;
+
+    if (item->column() == 0) {
+        // Clicked on name
+        uint256 id;
+        CHash256().Write((unsigned char*)&str[0], str.size()).Finalize((unsigned char*)&id);
+
+        bitnamesContacts.SetCurrentID(id);
+    } else {
+        // Clicked on ID
+        bitnamesContacts.SetCurrentID(uint256S(str));;
+    }
+
+    QMessageBox::information(this, tr("Switched active BitName!"),
+        "Changed current BitName to:\n" + QString::fromStdString(str),
+        QMessageBox::Ok);
 }

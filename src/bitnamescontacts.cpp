@@ -8,14 +8,17 @@ BitNamesContacts::BitNamesContacts()
 {
 
 }
-void BitNamesContacts::AddContact(const uint256& id)
+void BitNamesContacts::AddContact(const uint256& id, const std::string& name)
 {
-    vContactID.push_back(id);
+    Contact contact;
+    contact.id = id;
+    contact.name = name;
+    vContact.push_back(contact);
 }
 
-void BitNamesContacts::SetContacts(const std::vector<uint256> vContact)
+void BitNamesContacts::SetContacts(const std::vector<Contact> vContactIn)
 {
-    vContactID = vContact;
+    vContact = vContactIn;
 }
 
 void BitNamesContacts::SetCurrentID(const uint256 id)
@@ -23,9 +26,9 @@ void BitNamesContacts::SetCurrentID(const uint256 id)
     current = id;
 }
 
-std::vector<uint256> BitNamesContacts::GetContacts() const
+std::vector<Contact> BitNamesContacts::GetContacts() const
 {
-    return vContactID;
+    return vContact;
 }
 
 uint256 BitNamesContacts::GetCurrentID() const
@@ -33,3 +36,13 @@ uint256 BitNamesContacts::GetCurrentID() const
     return current;
 }
 
+bool BitNamesContacts::GetName(const uint256& id, std::string& strName)
+{
+    for (const Contact& c : vContact) {
+        if (c.id == id) {
+            strName = c.name;
+            return true;
+        }
+    }
+    return false;
+}

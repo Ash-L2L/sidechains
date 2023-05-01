@@ -24,6 +24,7 @@ private:
 
 private Q_SLOTS:
    void on_pushButtonAdd_clicked();
+   void on_lineEditName_textChanged();
 };
 
 #endif // ADDCONTACTDIALOG_H
