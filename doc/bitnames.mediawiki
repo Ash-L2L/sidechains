@@ -1,0 +1,99 @@
+<pre>
+  BN-00
+  Title: BitNames Transaction Versions and Encodings
+  Author: Ash Manning <ash@layertwolabs.com>
+  Status: Draft
+  Created: 2023-05-01
+</pre>
+
+== Abstract ==
+
+This RFC documents the transaction versions and encodings used in the BitNames protocol.
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
+
+==Copyright==
+
+The rights to this RFC are reserved by Layer Two Labs.
+
+
+== Specification ==
+
+Extended transactions are further extended to include a <code>memo</code> field.
+The <code>memo</code> field is a byte vector of arbitrary size.
+In order to maintain distinguishability from basic transactions, the <code>memo</code> field MUST be serialized AFTER the <code>vout</code> field and BEFORE the transaction witness <code>wit</code>.
+As with other variable sized byte vectors, the <code>memo</code> field is serialized by serializing the byte length of the memo as a compact integer, and then serializing the memo as raw bytes.
+
+=== Reserve/Register Bitname Transactions ===
+
+The transaction version <code>10</code> is used to tag BitName reservation and registration transactions.
+These transactions are defined as equivalent to extended transactions, with the following additions:
+* <code>commitment</code>
+This field is a byte vector of length 32.
+In a reservation transaction, a commitment to the BitName to be registered.
+In a registration transaction, a commitment to some arbitrary data.
+This field is serialized AFTER the <code>nLockTime</code> field.
+* <code>name_hash</code>
+This field is a byte vector of length 32.
+In a reservation transaction, this field SHALL consist of 32 zero-bytes.
+In a registration transaction, the sha256 hash of the name to be registered.
+This field is serialized AFTER the <code>commitment</code> field.
+* <code>sok</code>
+This field is a byte vector of length 32.
+In a reservation transaction, this field SHALL consist of 32 zero-bytes.
+In a registration transaction, the salt value used to generate the commitment that was used in the reservation that is being spent.
+This field is serialized AFTER the <code>name_hash</code> field.
+* <code>fIn4</code>
+This field is a boolean flag.
+In a reservation transaction, this field SHALL be <code>false</code>.
+In a registration transaction, this value is <code>true</code> IFF an ipv4 address is set in the same transaction.
+This field is serialized AFTER the <code>sok</code> field.
+* <code>in4</code>
+This field is present IFF the <code>fIn4</code> field is <code>true</code>.
+This field is an IPv4 address, serialized as a byte vector of length 4.
+In a reservation transaction, this field SHALL NOT be set.
+This field is serialized AFTER the <code>fIn4</code> field.
+* <code>fCPK</code>
+This field is a boolean flag.
+In a reservation transaction, this field SHALL be <code>false</code>.
+In a registration transaction, this value is <code>true</code> IFF a compressed public key is set in the same transaction.
+This field is serialized AFTER the <code>in4</code> field, IF the <code>in4</code>field is present (<code>fIn4</code> is <code>true</code>).
+This field is serialized AFTER the <code>fIn4</code> field, IF the <code>in4</code>field is not present(<code>fIn4</code> is <code>false</code>).
+* <code>cpk</code>
+This field is present IFF the <code>fCPK</code> field is <code>true</code>.
+This field is a compressed secp256k1 public key, serialized as a byte vector of length 33.
+In a reservation transaction, this field SHALL NOT be set.
+This field is serialized AFTER the <code>fCPK</code> field.
+
+=== Update Bitname Transactions ===
+
+The transaction version <code>11</code> is used to tag BitName update transactions.
+These transactions are defined as equivalent to extended transactions, with the following additions:
+* <code>fCommitment</code>
+This field is a boolean flag.
+This value is <code>true</code> IFF a 32-byte commitment is set in the same transaction.
+This field is serialized AFTER the <code>nLockTime</code> field.
+* <code>fIn4</code>
+This field is a boolean flag.
+This value is <code>true</code> IFF an ipv4 address is set in the same transaction.
+This field is serialized AFTER the <code>fCommitment</code> field.
+* <code>fCPK</code>
+This field is a boolean flag.
+In a reservation transaction, this field SHALL be <code>false</code>.
+In a registration transaction, this value is <code>true</code> IFF a compressed public key is set in the same transaction.
+This field is serialized AFTER the <code>fIn4</code> field.
+* <code>commitment</code>
+This field is a byte vector of length 32, used to commit to arbitrary data.
+This field is present IFF the <code>fCommitment</code> field is <code>true</code>.
+This field is serialized AFTER the <code>fCPK</code> field.
+* <code>in4</code>
+This field is present IFF the <code>fIn4</code> field is <code>true</code>.
+This field is an IPv4 address, serialized as a byte vector of length 4.
+This field is serialized AFTER the <code>commitment</code> field, IF the <code>commitment</code> field is present (<code>fCommitment</code> is <code>true</code>).
+This field is serialized AFTER the <code>fCPK</code> field, IF the <code>commitment</code> field is not present(<code>fCommitment</code> is <code>false</code>).
+* <code>cpk</code>
+This field is present IFF the <code>fCPK</code> field is <code>true</code>.
+This field is a compressed secp256k1 public key, serialized as a byte vector of length 33.
+This field is serialized AFTER the <code>in4</code> field, IF the <code>in4</code> field is present (<code>fIn4</code> is <code>true</code>).
+This field is serialized AFTER the <code>commitment</code> field, IF the <code>in4</code> field is NOT present, AND the <code>commitment</code> field IS present (<code>fIn4</code> is <code>false</code> AND <code>fCommitment</code> is <code>true</code>).
+This field is serialized AFTER the <code>fCPK</code> field, IF the <code>in4</code> field is NOT present, AND the <code>commitment</code> field is NOT present (<code>fIn4</code> is <code>false</code> AND <code>fCommitment</code> is <code>false</code>).
