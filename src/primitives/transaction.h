@@ -193,6 +193,7 @@ struct CMutableTransaction;
  * - unsigned char flags (!= 0)
  * - std::vector<CTxIn> vin
  * - std::vector<CTxOut> vout
+ * - std::vector<uint8_t> memo
  * - if (flags & 1):
  *   - CTxWitness wit;
  * - uint32_t nLockTime
@@ -203,6 +204,7 @@ struct CMutableTransaction;
  * - unsigned char flags (!= 0)
  * - std::vector<CTxIn> vin
  * - std::vector<CTxOut> vout
+ * - std::vector<uint8_t> memo
  * - if (flags & 1):
  *   - CTxWitness wit;
  * - uint32_t nLockTime
@@ -220,6 +222,7 @@ struct CMutableTransaction;
  * - unsigned char flags (!= 0)
  * - std::vector<CTxIn> vin
  * - std::vector<CTxOut> vout
+ * - std::vector<uint8_t> memo
  * - if (flags & 1):
  *   - CTxWitness wit;
  * - uint32_t nLockTime
@@ -249,6 +252,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         if (flags != 0) {
             s >> tx.vin;
             s >> tx.vout;
+            s >> tx.memo;
         }
     } else {
         /* We read a non-empty vin. Assume a normal vout follows. */
@@ -330,6 +334,9 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.vin;
     s << tx.vout;
+    if (flags) {
+        s << tx.memo;
+    }
     if (flags & 1) {
         for (size_t i = 0; i < tx.vin.size(); i++) {
             s << tx.vin[i].scriptWitness.stack;
@@ -389,6 +396,7 @@ public:
     // structure, including the hash.
     const std::vector<CTxIn> vin;
     const std::vector<CTxOut> vout;
+    const std::vector<uint8_t> memo = std::vector<uint8_t>();
     const int32_t nVersion;
     const uint32_t nLockTime;
 
@@ -483,6 +491,7 @@ struct CMutableTransaction
 {
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
+    std::vector<uint8_t> memo = std::vector<uint8_t>();
     int32_t nVersion;
     uint32_t nLockTime;
     unsigned char replayBytes = 0x3f;

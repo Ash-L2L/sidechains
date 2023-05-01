@@ -205,6 +205,8 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
     }
     entry.pushKV("vout", vout);
 
+    entry.pushKV("memo", HexStr(tx.memo.begin(), tx.memo.end()));
+
     if (!hashBlock.IsNull())
         entry.pushKV("blockhash", hashBlock.GetHex());
 
