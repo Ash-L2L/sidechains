@@ -444,7 +444,9 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
-static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control)
+static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control,
+                      std::vector<uint8_t> memo
+                     )
 {
     CAmount curBalance = pwallet->GetBalance();
 
@@ -470,7 +472,7 @@ static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CA
     int nChangePosRet = -1;
     CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount};
     vecSend.push_back(recipient);
-    if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
+    if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, true,memo)) {
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -489,7 +491,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 8)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 9)
         throw std::runtime_error(
             "sendtoaddress \"address\" amount ( \"comment\" \"comment_to\" subtractfeefromamount replaceable conf_target \"estimate_mode\")\n"
             "\nSend an amount to a given address.\n"
@@ -510,6 +512,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
             "       \"UNSET\"\n"
             "       \"ECONOMICAL\"\n"
             "       \"CONSERVATIVE\"\n"
+            "9. memo                   (hex, optional)\n"
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
@@ -563,11 +566,19 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid estimate_mode parameter");
         }
     }
+    std::vector<uint8_t> memo = std::vector<uint8_t>();
+    if (!request.params[8].isNull() && !request.params[8].get_str().empty()) {
+        if (IsHex(request.params[8].get_str())) {
+            memo = ParseHex(request.params[8].get_str());
+        } else {
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid memo");
+        }
+    }
 
 
     EnsureWalletIsUnlocked(pwallet);
 
-    SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, wtx, coin_control);
+    SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, wtx, coin_control, memo);
 
     return wtx.GetHash().GetHex();
 }
@@ -986,7 +997,7 @@ UniValue sendfrom(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() < 3 || request.params.size() > 6)
+    if (request.fHelp || request.params.size() < 3 || request.params.size() > 7)
         throw std::runtime_error(
             "sendfrom \"fromaccount\" \"toaddress\" amount ( minconf \"comment\" \"comment_to\" )\n"
             "\nDEPRECATED (use sendtoaddress). Sent an amount from an account to a bitcoin address."
@@ -1004,6 +1015,7 @@ UniValue sendfrom(const JSONRPCRequest& request)
             "6. \"comment_to\"        (string, optional) An optional comment to store the name of the person or organization \n"
             "                                     to which you're sending the transaction. This is not part of the transaction, \n"
             "                                     it is just kept in your wallet.\n"
+            "7. memo                  (hex, optional)\n"
             "\nResult:\n"
             "\"txid\"                 (string) The transaction id.\n"
             "\nExamples:\n"
@@ -1041,6 +1053,14 @@ UniValue sendfrom(const JSONRPCRequest& request)
         wtx.mapValue["comment"] = request.params[4].get_str();
     if (!request.params[5].isNull() && !request.params[5].get_str().empty())
         wtx.mapValue["to"]      = request.params[5].get_str();
+    std::vector<uint8_t> memo = std::vector<uint8_t>();
+    if (!request.params[6].isNull() && !request.params[6].get_str().empty()) {
+        if (IsHex(request.params[6].get_str())) {
+            memo = ParseHex(request.params[6].get_str());
+        } else {
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid memo");
+        }
+    }
 
     EnsureWalletIsUnlocked(pwallet);
 
@@ -1050,7 +1070,7 @@ UniValue sendfrom(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
     CCoinControl no_coin_control; // This is a deprecated API
-    SendMoney(pwallet, dest, nAmount, false, wtx, no_coin_control);
+    SendMoney(pwallet, dest, nAmount, false, wtx, no_coin_control, memo);
 
     return wtx.GetHash().GetHex();
 }
@@ -1063,7 +1083,7 @@ UniValue sendmany(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 8)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 9)
         throw std::runtime_error(
             "sendmany \"fromaccount\" {\"address\":amount,...} ( minconf \"comment\" [\"address\",...] replaceable conf_target \"estimate_mode\")\n"
             "\nSend multiple times. Amounts are double-precision floating point numbers."
@@ -1091,6 +1111,7 @@ UniValue sendmany(const JSONRPCRequest& request)
             "       \"UNSET\"\n"
             "       \"ECONOMICAL\"\n"
             "       \"CONSERVATIVE\"\n"
+            "9. memo                   (hex, optional)\n"
              "\nResult:\n"
             "\"txid\"                   (string) The transaction id for the send. Only 1 transaction is created regardless of \n"
             "                                    the number of addresses.\n"
@@ -1146,6 +1167,15 @@ UniValue sendmany(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid estimate_mode parameter");
         }
     }
+    std::vector<uint8_t> memo = std::vector<uint8_t>();
+    if (!request.params[8].isNull() && !request.params[8].get_str().empty()) {
+        if (IsHex(request.params[8].get_str())) {
+            memo = ParseHex(request.params[8].get_str());
+        } else {
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid memo");
+        }
+    }
+
 
     std::set<CTxDestination> destinations;
     std::vector<CRecipient> vecSend;
@@ -1192,7 +1222,7 @@ UniValue sendmany(const JSONRPCRequest& request)
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
     std::string strFailReason;
-    bool fCreated = pwallet->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, coin_control);
+    bool fCreated = pwallet->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, coin_control, true, memo);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
     CValidationState state;
@@ -1731,6 +1761,7 @@ void ListTransactions(CWallet* const pwallet, const CWalletTx& wtx, const std::s
                 entry.pushKV("vout", r.vout);
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
+                entry.pushKV("memo", HexStr(wtx.tx->memo));
                 ret.push_back(entry);
             }
         }
@@ -3809,7 +3840,7 @@ UniValue registerbitname(const JSONRPCRequest& request)
     }
 
     // TODO: make ipv4 optional
-    if (request.fHelp || request.params.size() != 4)
+    if (request.fHelp || request.params.size() > 5)
         throw std::runtime_error(
             "registerbitname\n"
             "\nArguments:\n"
@@ -3817,6 +3848,7 @@ UniValue registerbitname(const JSONRPCRequest& request)
             "2. \"commitment\"         (string, required)\n"
             "3. \"ipv4\"               (string, required)\n"
             "4. \"fee\"                (numeric or string, required)\n"
+            "5. pubkey                 (hex, optional) compressed public key"
             "\nRegister a BitName\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nResult (array):\n"
@@ -3863,6 +3895,22 @@ UniValue registerbitname(const JSONRPCRequest& request)
         LogPrintf("%s: %s\n", __func__, strError);
         throw JSONRPCError(RPC_MISC_ERROR, strError);
     }
+    // pubkey
+    boost::optional<CPubKey> pubkey = boost::none;
+    if (!request.params[4].isNull() && !request.params[4].get_str().empty()) {
+        std::string pubkey_hexstr = request.params[4].get_str();
+        if (!IsHex(pubkey_hexstr)) {
+            throw JSONRPCError(RPC_TYPE_ERROR, "Invalid public key, must be in hex format");
+        }
+        std::vector<uint8_t> pubkey_bytes = ParseHex(pubkey_hexstr);
+        if (pubkey_bytes.size() != CPubKey::COMPRESSED_PUBLIC_KEY_SIZE) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid public key, compressed keys must be exactly 33 bytes");
+        }
+        pubkey = CPubKey(pubkey_bytes);
+        if (!(*pubkey).IsFullyValid()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid public key");
+        }
+    }
 
     EnsureWalletIsUnlocked(pwallet);
     pwallet->BlockUntilSyncedToCurrentChain();
@@ -3871,7 +3919,7 @@ UniValue registerbitname(const JSONRPCRequest& request)
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!pwallet->RegisterBitName(tx, strFail, strName, commitment, in4, nFee))
+    if (!pwallet->RegisterBitName(tx, strFail, strName, commitment, in4, pubkey, nFee))
     {
         LogPrintf("%s: %s\n", __func__, strFail);
         throw JSONRPCError(RPC_MISC_ERROR, strFail);
@@ -4501,9 +4549,9 @@ static const CRPCCommand commands[] =
     { "wallet",             "listwallets",                      &listwallets,                   {} },
     { "wallet",             "lockunspent",                      &lockunspent,                   {"unlock","transactions"} },
     { "wallet",             "move",                             &movecmd,                       {"fromaccount","toaccount","amount","minconf","comment"} },
-    { "wallet",             "sendfrom",                         &sendfrom,                      {"fromaccount","toaddress","amount","minconf","comment","comment_to"} },
-    { "wallet",             "sendmany",                         &sendmany,                      {"fromaccount","amounts","minconf","comment","subtractfeefrom","replaceable","conf_target","estimate_mode"} },
-    { "wallet",             "sendtoaddress",                    &sendtoaddress,                 {"address","amount","comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode"} },
+    { "wallet",             "sendfrom",                         &sendfrom,                      {"fromaccount","toaddress","amount","minconf","comment","comment_to", "memo"} },
+    { "wallet",             "sendmany",                         &sendmany,                      {"fromaccount","amounts","minconf","comment","subtractfeefrom","replaceable","conf_target","estimate_mode", "memo"} },
+    { "wallet",             "sendtoaddress",                    &sendtoaddress,                 {"address","amount","comment","comment_to","subtractfeefromamount","replaceable","conf_target","estimate_mode", "memo"} },
     { "wallet",             "setaccount",                       &setaccount,                    {"address","account"} },
     { "wallet",             "settxfee",                         &settxfee,                      {"amount"} },
     { "wallet",             "signmessage",                      &signmessage,                   {"address","message"} },
@@ -4519,7 +4567,7 @@ static const CRPCCommand commands[] =
     { "sidechain",          "refundallwithdrawals",             &refundallwithdrawals,          {} },
 
     { "BitNames",          "reservebitname",                   &reservebitname,                   {"name", "nfee"} },
-    { "BitNames",          "registerbitname",                  &registerbitname,                  {"name", "commitment", "ipv4", "nfee"} },
+    { "BitNames",          "registerbitname",                  &registerbitname,                  {"name", "commitment", "ipv4", "nfee", "pubkey"} },
     { "BitNames",          "updatebitname",                    &updatebitname,                    {"name", "commitment", "ipv4", "nfee", "dest"} },
     { "BitNames",          "listmybitnamereservations",        &listmybitnamereservations,       {} },
     { "BitNames",          "listmybitnames",                   &listmybitnames,                  {} },

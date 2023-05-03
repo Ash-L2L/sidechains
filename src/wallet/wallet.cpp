@@ -2818,7 +2818,8 @@ OutputType CWallet::TransactionChangeType(OutputType change_type, const std::vec
 }
 
 bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
-                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign)
+                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign,
+                                std::vector<uint8_t> memo)
 {
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
@@ -2844,6 +2845,9 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
     wtxNew.fTimeReceivedIsTxTime = true;
     wtxNew.BindWallet(this);
     CMutableTransaction txNew;
+
+    // set memo
+    txNew.memo = memo;
 
     // Discourage fee sniping.
     //
@@ -3354,7 +3358,7 @@ bool CWallet::ReserveBitName(CTransactionRef& tx, std::string& strFail, const st
     return true;
 }
 
-bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment, const in_addr& in4, const CAmount& nFee, bool fImmutable)
+bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const std::string& strName, const uint256& commitment, const in_addr& in4, const boost::optional<CPubKey>& pubkey, const CAmount& nFee, bool fImmutable)
 {
     strFail = "Unknown error!";
 
@@ -3476,6 +3480,7 @@ bool CWallet::RegisterBitName(CTransactionRef& tx, std::string& strFail, const s
     mtx.sok = reservation.tx->sok;
     mtx.fIn4 = true;
     mtx.in4 = in4;
+    mtx.cpk = pubkey;
 
     // Dummy sign the transaction to calculate minimum fee
     std::vector<CInputCoin> vInputCoinsTemp = vInputCoins;
