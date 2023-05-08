@@ -19,6 +19,12 @@
 #include <consensus/tx_verify.h>
 #include <consensus/validation.h>
 #include <core_io.h>
+#include <cryptopp/asn.h>
+#include <cryptopp/eccrypto.h>
+#include <cryptopp/ecp.h>
+#include <cryptopp/oids.h>
+#include <cryptopp/osrng.h>
+#include <cryptopp/rng.h>
 #include <cuckoocache.h>
 #include <hash.h>
 #include <init.h>
@@ -6798,3 +6804,42 @@ public:
         mapBlockMainHashIndex.clear();
     }
 } instance_of_cmaincleanup;
+
+std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
+    CryptoPP::AutoSeededRandomPool rng;
+
+    // convert pubkey to crypto++
+    std::vector<uint8_t> pubkey_bytes =
+        std::vector<uint8_t>(CPubKey::COMPRESSED_PUBLIC_KEY_SIZE, uint8_t(0));
+    CVectorWriter pubkey_bytes_stream(0, 0, pubkey_bytes, 0);
+    pubkey.Serialize(pubkey_bytes_stream);
+    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
+                    CryptoPP::NoCofactorMultiplication,
+                    false,
+                    true>::PublicKey publicKey;
+    publicKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
+    publicKey.AccessGroupParameters().SetPointCompression(true);
+    CryptoPP::VectorSource pubkey_bytes_source(pubkey_bytes, false);
+    publicKey.Load(pubkey_bytes_source);
+
+    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
+                    CryptoPP::NoCofactorMultiplication,
+                    false,
+                    true>::Decryptor decryptor(rng,
+                                               CryptoPP::ASN1::secp256k1());
+    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
+                    CryptoPP::NoCofactorMultiplication,
+                    false,
+                    true>::Encryptor encryptor(decryptor);
+    encryptor.AccessPublicKey() = publicKey;
+
+    size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
+    std::vector<uint8_t> ciphertext =
+        std::vector<uint8_t>(ciphertext_length, uint8_t(0));
+    const unsigned char* plaintext_ptr =
+        reinterpret_cast<const unsigned char*>(plaintext.c_str());
+
+    encryptor.Encrypt(rng, plaintext_ptr, plaintext.size(), ciphertext.data());
+
+    return ciphertext;
+}

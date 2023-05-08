@@ -611,4 +611,6 @@ bool DecodeWithdrawalFees(const CScript& script, CAmount& amount);
 
 uint256 GetWithdrawalRefundMessageHash(const uint256& id);
 
+std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey);
+
 #endif // BITCOIN_VALIDATION_H

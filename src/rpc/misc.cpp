@@ -923,6 +923,36 @@ UniValue listbitnamereservations(const JSONRPCRequest& request)
     return result;
 }
 
+UniValue encrypt_memo(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+            "encryptmemo\n"
+            "\nArguments:\n"
+            "1. \"pubkey\" (hex, required) the compressed public key to encrypt to\n"
+            "2. \"memo\"   (string, required) the plaintext memo to encrypt\n"
+            "\nEncrypt memo\n"
+            "\nResult:\n"
+            "Hex of encrypted memo\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listbitnamereservations", "")
+            + HelpExampleRpc("listbitnamereservations", "")
+        );
+
+    std::string pubkey_str = request.params[0].get_str();
+    if (!IsHex(pubkey_str))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Pubkey must be hex");
+    std::vector<uint8_t> pubkey_bytes = ParseHex(pubkey_str);
+    if (pubkey_bytes.size() != CPubKey::COMPRESSED_PUBLIC_KEY_SIZE)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid public key");
+    CPubKey pubkey(pubkey_bytes);
+    if (!pubkey.IsFullyValid())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid public key");
+    std::string plaintext = request.params[1].get_str();
+
+    std::vector<uint8_t> ciphertext = encryptmemo(plaintext, pubkey);
+    return UniValue(HexStr(ciphertext));
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           argNames
   //  --------------------- ------------------------    -----------------------    ----------
@@ -956,6 +986,7 @@ static const CRPCCommand commands[] =
     { "BitNames",          "listbitnames",                  &listbitnames,                  {}},
     { "BitNames",          "resolvebitname",                &resolvebitname,                {"bitname"}},
     { "BitNames",          "listbitnamereservations",       &listbitnamereservations,       {}},
+    { "BitNames",          "encryptmemo",                   &encrypt_memo,                  {"pubkey", "memo"}}
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)
