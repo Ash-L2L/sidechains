@@ -6820,7 +6820,12 @@ std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
     publicKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
     publicKey.AccessGroupParameters().SetPointCompression(true);
     CryptoPP::VectorSource pubkey_bytes_source(pubkey_bytes, false);
-    publicKey.Load(pubkey_bytes_source);
+    //publicKey.Load(pubkey_bytes_source);
+    CryptoPP::ECP::Point pk_point;
+    publicKey.GetGroupParameters()
+             .GetCurve()
+             .DecodePoint(pk_point, pubkey_bytes_source, pubkey_bytes.size());
+    publicKey.SetPublicElement(pk_point);
 
     CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
                     CryptoPP::NoCofactorMultiplication,

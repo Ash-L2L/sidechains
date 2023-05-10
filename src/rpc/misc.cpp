@@ -934,8 +934,8 @@ UniValue encrypt_memo(const JSONRPCRequest& request) {
             "\nResult:\n"
             "Hex of encrypted memo\n"
             "\nExamples:\n"
-            + HelpExampleCli("listbitnamereservations", "")
-            + HelpExampleRpc("listbitnamereservations", "")
+            + HelpExampleCli("encryptmemo", "")
+            + HelpExampleRpc("encryptmemo", "")
         );
 
     std::string pubkey_str = request.params[0].get_str();
