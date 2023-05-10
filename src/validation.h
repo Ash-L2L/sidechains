@@ -13,6 +13,7 @@
 #include <amount.h>
 #include <coins.h>
 #include <fs.h>
+#include <key.h>
 #include <protocol.h> // For CMessageHeader::MessageStartChars
 #include <policy/feerate.h>
 #include <script/script_error.h>
@@ -612,5 +613,9 @@ bool DecodeWithdrawalFees(const CScript& script, CAmount& amount);
 uint256 GetWithdrawalRefundMessageHash(const uint256& id);
 
 std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey);
+boost::optional<std::vector<uint8_t>> decryptmemo(
+    std::vector<uint8_t> ciphertext,
+    const CKey& secret
+);
 
 #endif // BITCOIN_VALIDATION_H

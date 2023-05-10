@@ -953,6 +953,45 @@ UniValue encrypt_memo(const JSONRPCRequest& request) {
     return UniValue(HexStr(ciphertext));
 }
 
+UniValue decrypt_memo(const JSONRPCRequest& request) {
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+            "decryptmemo\n"
+            "\nArguments:\n"
+            "1. \"secret\"       (hex, required) the secret key to decrypt with\n"
+            "2. \"ciphertext\"   (hex, required) the ciphertext to decrypt\n"
+            "\nDecrypt memo\n"
+            "\nResult:\n"
+            "Hex of plaintext\n"
+            "\nExamples:\n"
+            + HelpExampleCli("decryptmemo", "")
+            + HelpExampleRpc("decryptmemo", "")
+        );
+
+    std::string secret_str = request.params[0].get_str();
+    if (!IsHex(secret_str))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Secret key must be hex");
+    std::vector<uint8_t> secret_bytes = ParseHex(secret_str);
+    //CPubKey pubkey(pubkey_bytes);
+    CKey secret = CKey();
+    if (secret_bytes.size() != secret.size())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid secret key length");
+    secret.Set(secret_bytes.begin(), secret_bytes.end(), true);
+    if (!secret.IsValid())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid secret key");
+    
+    std::string ciphertext_str = request.params[1].get_str();
+    if (!IsHex(ciphertext_str))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Ciphertext must be hex");
+    std::vector<uint8_t> ciphertext = ParseHex(ciphertext_str);
+
+    boost::optional<std::vector<uint8_t>> plaintext = decryptmemo(ciphertext, secret);
+    if (!plaintext)
+        throw JSONRPCError(RPC_MISC_ERROR, "Failed to decrypt ciphertext");
+    
+    return UniValue(HexStr(*plaintext));
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           argNames
   //  --------------------- ------------------------    -----------------------    ----------
@@ -986,7 +1025,8 @@ static const CRPCCommand commands[] =
     { "BitNames",          "listbitnames",                  &listbitnames,                  {}},
     { "BitNames",          "resolvebitname",                &resolvebitname,                {"bitname"}},
     { "BitNames",          "listbitnamereservations",       &listbitnamereservations,       {}},
-    { "BitNames",          "encryptmemo",                   &encrypt_memo,                  {"pubkey", "memo"}}
+    { "BitNames",          "encryptmemo",                   &encrypt_memo,                  {"pubkey", "memo"}},
+    { "BitNames",          "decryptmemo",                   &decrypt_memo,                  {"secret", "ciphertext"}}
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

@@ -6820,7 +6820,6 @@ std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
     publicKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
     publicKey.AccessGroupParameters().SetPointCompression(true);
     CryptoPP::VectorSource pubkey_bytes_source(pubkey_bytes, false);
-    //publicKey.Load(pubkey_bytes_source);
     CryptoPP::ECP::Point pk_point;
     publicKey.GetGroupParameters()
              .GetCurve()
@@ -6847,4 +6846,43 @@ std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
     encryptor.Encrypt(rng, plaintext_ptr, plaintext.size(), ciphertext.data());
 
     return ciphertext;
+}
+
+boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertext, const CKey& secret) {
+    CryptoPP::AutoSeededRandomPool rng;
+
+    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
+                    CryptoPP::NoCofactorMultiplication,
+                    false,
+                    true>::PrivateKey secretKey;
+    secretKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
+
+    CryptoPP::Integer secret_value(*secret.begin());
+    secretKey.SetPrivateExponent(secret_value);
+
+    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
+                    CryptoPP::NoCofactorMultiplication,
+                    false,
+                    true>::Decryptor decryptor(rng,
+                                               CryptoPP::ASN1::secp256k1());
+    decryptor.AccessPrivateKey() = secretKey;
+
+    //size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
+    size_t max_plaintext_length = decryptor.MaxPlaintextLength(ciphertext.size());
+    std::vector<uint8_t> plaintext =
+        std::vector<uint8_t>(max_plaintext_length, uint8_t(0));
+
+    //encryptor.Encrypt(rng, plaintext_ptr, plaintext.size(), ciphertext.data());
+    CryptoPP::DecodingResult decoding_result =
+        decryptor.Decrypt(rng, 
+                          ciphertext.data(),
+                          ciphertext.size(),
+                          plaintext.data());
+    
+    boost::optional<std::vector<uint8_t>> result = boost::none;
+    if (decoding_result.isValidCoding) {
+        plaintext.resize(decoding_result.messageLength);
+        result = plaintext;
+    }
+    return result;
 }
