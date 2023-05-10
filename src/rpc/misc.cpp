@@ -980,6 +980,13 @@ UniValue decrypt_memo(const JSONRPCRequest& request) {
     if (!secret.IsValid())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid secret key");
     
+    // FIXME: remove
+    CPubKey pubkey = secret.GetPubKey();
+    std::vector<uint8_t> cpk =
+        std::vector<uint8_t>(pubkey.begin(), pubkey.end());
+    std::string cpk_hex = HexStr(cpk);
+    std::cout << "CPK: " << cpk_hex << std::endl;
+
     std::string ciphertext_str = request.params[1].get_str();
     if (!IsHex(ciphertext_str))
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Ciphertext must be hex");

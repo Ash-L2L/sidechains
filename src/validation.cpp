@@ -6810,9 +6810,7 @@ std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
 
     // convert pubkey to crypto++
     std::vector<uint8_t> pubkey_bytes =
-        std::vector<uint8_t>(CPubKey::COMPRESSED_PUBLIC_KEY_SIZE, uint8_t(0));
-    CVectorWriter pubkey_bytes_stream(0, 0, pubkey_bytes, 0);
-    pubkey.Serialize(pubkey_bytes_stream);
+        std::vector<uint8_t>(pubkey.begin(), pubkey.end());
     CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
                     CryptoPP::NoCofactorMultiplication,
                     false,
@@ -6823,7 +6821,7 @@ std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
     CryptoPP::ECP::Point pk_point;
     publicKey.GetGroupParameters()
              .GetCurve()
-             .DecodePoint(pk_point, pubkey_bytes_source, pubkey_bytes.size());
+             .DecodePoint(pk_point, pubkey_bytes.data(), pubkey_bytes.size());
     publicKey.SetPublicElement(pk_point);
 
     CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
@@ -6834,8 +6832,23 @@ std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
     CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
                     CryptoPP::NoCofactorMultiplication,
                     false,
-                    true>::Encryptor encryptor(decryptor);
-    encryptor.AccessPublicKey() = publicKey;
+                    true>::Encryptor encryptor(publicKey);
+
+    // FIXME: remove
+    std::vector<uint8_t> pk_x_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    publicKey.GetPublicElement().x.Encode(pk_x_bytes.data(), 32);
+    std::vector<uint8_t> pk_y_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    publicKey.GetPublicElement().y.Encode(pk_y_bytes.data(), 32);
+    std::cout << "\n\nCrypto++ CPK: "
+              << HexStr(pubkey_bytes)
+              << "\n\nCrypto++ PK_X: "
+              << HexStr(pk_x_bytes)
+              << "\n\nCrypto++ PK_Y: "
+              << HexStr(pk_y_bytes)
+              << std::endl;
+
 
     size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
     std::vector<uint8_t> ciphertext =
@@ -6857,15 +6870,48 @@ boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertex
                     true>::PrivateKey secretKey;
     secretKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
 
-    CryptoPP::Integer secret_value(*secret.begin());
+    CryptoPP::Integer secret_value(secret.begin(),
+                                   32);
     secretKey.SetPrivateExponent(secret_value);
+
+    // FIXME
+    std::vector<uint8_t> secret_value_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    secret_value.Encode(secret_value_bytes.data(), 32);
+    std::vector<uint8_t> secret_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    secretKey.GetPrivateExponent().Encode(secret_bytes.data(), 32);
+    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
+                    CryptoPP::NoCofactorMultiplication,
+                    false,
+                    true>::PublicKey pubkey;
+    pubkey.AccessGroupParameters().SetPointCompression(true);
+    secretKey.MakePublicKey(pubkey);
+    std::vector<uint8_t> pk_x_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    pubkey.GetPublicElement().x.Encode(pk_x_bytes.data(), 32);
+    std::vector<uint8_t> pk_y_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    pubkey.GetPublicElement().y.Encode(pk_y_bytes.data(), 32);
+    std::cout << "\n\nCrypto++ SECRET_VALUE: "
+              << HexStr(secret_value_bytes)
+              << "\n\nCrypto++ SECRET: "
+              << HexStr(secret_bytes)
+              << "\n\nCrypto++ PK_X: "
+              << HexStr(pk_x_bytes)
+              << "\n\nCrypto++ PK_Y: "
+              << HexStr(pk_y_bytes)
+              << std::endl;
+
 
     CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
                     CryptoPP::NoCofactorMultiplication,
                     false,
-                    true>::Decryptor decryptor(rng,
-                                               CryptoPP::ASN1::secp256k1());
-    decryptor.AccessPrivateKey() = secretKey;
+                    true>::Decryptor decryptor;
+    decryptor.AccessKey()
+             .AccessGroupParameters()
+             .Initialize(CryptoPP::ASN1::secp256k1());
+    decryptor.AccessKey().SetPrivateExponent(secret_value);
 
     //size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
     size_t max_plaintext_length = decryptor.MaxPlaintextLength(ciphertext.size());
