@@ -6911,6 +6911,7 @@ boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertex
     decryptor.AccessKey()
              .AccessGroupParameters()
              .Initialize(CryptoPP::ASN1::secp256k1());
+    decryptor.AccessKey().AccessGroupParameters().SetPointCompression(true);
     decryptor.AccessKey().SetPrivateExponent(secret_value);
 
     //size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
