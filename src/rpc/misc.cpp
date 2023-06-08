@@ -974,7 +974,7 @@ UniValue decrypt_memo(const JSONRPCRequest& request) {
     std::vector<uint8_t> secret_bytes = ParseHex(secret_str);
     //CPubKey pubkey(pubkey_bytes);
     CKey secret = CKey();
-    if (secret_bytes.size() != secret.size())
+    if (secret_bytes.size() != 32)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid secret key length");
     secret.Set(secret_bytes.begin(), secret_bytes.end(), true);
     if (!secret.IsValid())

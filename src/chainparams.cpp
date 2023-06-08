@@ -211,8 +211,8 @@ public:
         std::fprintf(stderr, "Genesis Merkle Root: 0x%s\n", genesis.hashMerkleRoot.ToString().c_str());
 
 
-        assert(consensus.hashGenesisBlock == uint256S("0x01f8d4c931dae78fc007deb36c3e0fabff2ff45eda1fc3440f2e61cc1fe87678"));
-        assert(genesis.hashMerkleRoot == uint256S("0x8eb1364f43885edf1322b2d32095e57abb03c32a61a80ac25c8db3de58e16b8a"));
+        assert(consensus.hashGenesisBlock == uint256S("0x3b184bdff1320d46b30b6366e881636ef8ebd35647f4192c9cdc6b796651af5b"));
+        assert(genesis.hashMerkleRoot == uint256S("0xdd67edb32e51fe80f60b0bee6b54eee556bda41df00bcef289044aefaafcaadd"));
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();      //!< Regtest mode doesn't have any DNS seeds.

@@ -185,6 +185,7 @@ struct CMutableTransaction;
  * - int32_t nVersion
  * - std::vector<CTxIn> vin
  * - std::vector<CTxOut> vout
+ * - std::vector<uint8_t> memo
  * - uint32_t nLockTime
  *
  * Extended transaction serialization format:
@@ -252,12 +253,12 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         if (flags != 0) {
             s >> tx.vin;
             s >> tx.vout;
-            s >> tx.memo;
         }
     } else {
         /* We read a non-empty vin. Assume a normal vout follows. */
         s >> tx.vout;
     }
+    s >> tx.memo;
     if ((flags & 1) && fAllowWitness) {
         /* The witness flag is present, and we support witnesses. */
         flags ^= 1;
@@ -334,9 +335,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.vin;
     s << tx.vout;
-    if (flags) {
-        s << tx.memo;
-    }
+    s << tx.memo;
     if (flags & 1) {
         for (size_t i = 0; i < tx.vin.size(); i++) {
             s << tx.vin[i].scriptWitness.stack;

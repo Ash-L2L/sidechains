@@ -6893,6 +6893,7 @@ boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertex
     std::vector<uint8_t> pk_y_bytes =
         std::vector<uint8_t>(32, uint8_t(0));
     pubkey.GetPublicElement().y.Encode(pk_y_bytes.data(), 32);
+    /*
     std::cout << "\n\nCrypto++ SECRET_VALUE: "
               << HexStr(secret_value_bytes)
               << "\n\nCrypto++ SECRET: "
@@ -6902,6 +6903,7 @@ boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertex
               << "\n\nCrypto++ PK_Y: "
               << HexStr(pk_y_bytes)
               << std::endl;
+    */
 
 
     CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
