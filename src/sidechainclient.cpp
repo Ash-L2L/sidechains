@@ -114,7 +114,7 @@ std::vector<SidechainDeposit> SidechainClient::UpdateDeposits(const uint256& has
                     continue;
                 if (!IsHex(data))
                     continue;
-                if (!DecodeHexTx(deposit.dtx, data))
+                if (!DecodeHexMainchainTx(deposit.dtx, data))
                     continue;
             }
             else

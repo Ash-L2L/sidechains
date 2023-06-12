@@ -547,8 +547,153 @@ struct CMutableTransaction
     }
 };
 
+/** The basic mainchain transaction that is broadcasted on the network and
+ * contained in blocks.
+ * A transaction can contain multiple inputs and outputs.
+ */
+struct CMainchainTransaction
+{
+    // Default transaction version.
+    static const int32_t CURRENT_VERSION=3;
+
+    // Changing the default transaction version requires a two step process: first
+    // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
+    // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
+    // MAX_STANDARD_VERSION will be equal.
+    static const int32_t MAX_STANDARD_VERSION=11;
+
+    // The local variables are made const to prevent unintended modification
+    // without updating the cached hash value. However, CMainchainTransaction is not
+    // actually immutable; deserialization and assignment are implemented,
+    // and bypass the constness. This is safe, as they update the entire
+    // structure, including the hash.
+    std::vector<CTxIn> vin;
+    std::vector<CTxOut> vout;
+    int32_t nVersion;
+    uint32_t nLockTime;
+    unsigned char replayBytes = 0x3f;
+
+    CMainchainTransaction();
+
+    template <typename Stream>
+    inline void Serialize(Stream& s) const {
+        SerializeMainchainTransaction(*this, s);
+    }
+
+    template <typename Stream>
+    inline void Unserialize(Stream& s) {
+        UnserializeMainchainTransaction(*this, s);
+    }
+
+    template <typename Stream>
+    CMainchainTransaction(deserialize_type, Stream& s) {
+        Unserialize(s);
+    }
+
+    uint256 GetHash() const;
+
+    bool IsEmpty() const
+    {
+        return vin.empty() && vout.empty();
+    }
+
+    friend bool operator==(const CMainchainTransaction& a, const CMainchainTransaction& b)
+    {
+        return a.GetHash() == b.GetHash();
+    }
+
+    bool HasWitness() const
+    {
+        for (size_t i = 0; i < vin.size(); i++) {
+            if (!vin[i].scriptWitness.IsNull()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool IsCoinBase() const
+    {
+        return (vin.size() == 1 && vin[0].prevout.IsNull());
+    }
+};
+
+template<typename Stream>
+inline void SerializeMainchainTransaction(const CMainchainTransaction& tx, Stream& s) {
+    const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
+
+    s << tx.nVersion;
+    if (tx.nVersion == 3) {
+        s << tx.replayBytes;
+    }
+    unsigned char flags = 0;
+    // Consistency check
+    if (fAllowWitness) {
+        /* Check whether witnesses need to be serialized. */
+        if (tx.HasWitness()) {
+            flags |= 1;
+        }
+    }
+    if (flags) {
+        /* Use extended format in case witnesses are to be serialized. */
+        std::vector<CTxIn> vinDummy;
+        s << vinDummy;
+        s << flags;
+    }
+    s << tx.vin;
+    s << tx.vout;
+    if (flags & 1) {
+        for (size_t i = 0; i < tx.vin.size(); i++) {
+            s << tx.vin[i].scriptWitness.stack;
+        }
+    }
+    s << tx.nLockTime;
+}
+
+template<typename Stream>
+inline void UnserializeMainchainTransaction(CMainchainTransaction& tx, Stream& s) {
+    const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
+
+    s >> tx.nVersion;
+    if (tx.nVersion == 3) {
+        s >> tx.replayBytes;
+    }
+    unsigned char flags = 0;
+    tx.vin.clear();
+    tx.vout.clear();
+    /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
+    s >> tx.vin;
+    if (tx.vin.size() == 0 && fAllowWitness) {
+        /* We read a dummy or an empty vin. */
+        s >> flags;
+        if (flags != 0) {
+            s >> tx.vin;
+            s >> tx.vout;
+        }
+    } else {
+        /* We read a non-empty vin. Assume a normal vout follows. */
+        s >> tx.vout;
+    }
+    if ((flags & 1) && fAllowWitness) {
+        /* The witness flag is present, and we support witnesses. */
+        flags ^= 1;
+        for (size_t i = 0; i < tx.vin.size(); i++) {
+            s >> tx.vin[i].scriptWitness.stack;
+        }
+    }
+    if (flags) {
+        /* Unknown flag in the serialization */
+        throw std::ios_base::failure("Unknown transaction optional data");
+    }
+    s >> tx.nLockTime;
+}
+
 typedef std::shared_ptr<const CTransaction> CTransactionRef;
 static inline CTransactionRef MakeTransactionRef() { return std::make_shared<const CTransaction>(); }
 template <typename Tx> static inline CTransactionRef MakeTransactionRef(Tx&& txIn) { return std::make_shared<const CTransaction>(std::forward<Tx>(txIn)); }
+
+typedef std::shared_ptr<const CMainchainTransaction> CMainchainTransactionRef;
+static inline CMainchainTransactionRef MakeMainchainTransactionRef() { return std::make_shared<const CMainchainTransaction>(); }
+template <typename Tx> static inline CMainchainTransactionRef MakeMainchainTransactionRef(Tx&& txIn) { return std::make_shared<const CMainchainTransaction>(std::forward<Tx>(txIn)); }
 
 #endif // BITCOIN_PRIMITIVES_TRANSACTION_H

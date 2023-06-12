@@ -62,6 +62,12 @@ uint256 CMutableTransaction::GetHash() const
     return SerializeHash(*this, SER_GETHASH, SERIALIZE_TRANSACTION_NO_WITNESS);
 }
 
+uint256 CMainchainTransaction::GetHash() const
+{
+    return SerializeHash(*this, SER_GETHASH, SERIALIZE_TRANSACTION_NO_WITNESS);
+}
+
+
 uint256 CTransaction::ComputeHash() const
 {
     return SerializeHash(*this, SER_GETHASH, SERIALIZE_TRANSACTION_NO_WITNESS);
@@ -79,6 +85,8 @@ uint256 CTransaction::GetWitnessHash() const
 CTransaction::CTransaction() : vin(), vout(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), commitment(), name_hash(), sok(), fIn4(false), in4({ .s_addr = 0 }), cpk(), hash() {}
 CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name_hash(tx.name_hash), sok(tx.sok), in4(tx.in4), cpk(tx.cpk), hash(ComputeHash()) {}
 CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), fCommitment(tx.fCommitment), fIn4(tx.fIn4), commitment(tx.commitment), name_hash(tx.name_hash), sok(tx.sok), in4(tx.in4), cpk(tx.cpk), hash(ComputeHash()) {}
+
+CMainchainTransaction::CMainchainTransaction() : vin(), vout(), nVersion(CMainchainTransaction::CURRENT_VERSION), nLockTime(0) {}
 
 CAmount CTransaction::GetValueOut() const
 {

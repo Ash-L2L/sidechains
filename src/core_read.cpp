@@ -107,6 +107,25 @@ bool CheckTxScriptsSanity(const CMutableTransaction& tx)
     
     return true;
 }
+bool CheckMainchainTxScriptsSanity(const CMainchainTransaction& tx)
+{
+    // Check input scripts for non-coinbase txs
+    if (!tx.IsCoinBase()) {
+        for (unsigned int i = 0; i < tx.vin.size(); i++) {
+            if (!tx.vin[i].scriptSig.HasValidOps() || tx.vin[i].scriptSig.size() > MAX_SCRIPT_SIZE) {
+                return false;
+            }
+        }
+    }
+    // Check output scripts
+    for (unsigned int i = 0; i < tx.vout.size(); i++) {
+        if (!tx.vout[i].scriptPubKey.HasValidOps() || tx.vout[i].scriptPubKey.size() > MAX_SCRIPT_SIZE) {
+            return false;
+        }
+    }
+    
+    return true;
+}
 
 bool DecodeHexTx(CMutableTransaction& tx, const std::string& hex_tx, bool try_no_witness, bool try_witness)
 {
@@ -121,6 +140,41 @@ bool DecodeHexTx(CMutableTransaction& tx, const std::string& hex_tx, bool try_no
         try {
             ssData >> tx;
             if (ssData.eof() && (!try_witness || CheckTxScriptsSanity(tx))) {
+                return true;
+            }
+        } catch (const std::exception&) {
+            // Fall through.
+        }
+    }
+
+    if (try_witness) {
+        CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
+        try {
+            ssData >> tx;
+            if (ssData.empty()) {
+                return true;
+            }
+        } catch (const std::exception&) {
+            // Fall through.
+        }
+    }
+    
+    return false;
+}
+
+bool DecodeHexMainchainTx(CMainchainTransaction& tx, const std::string& hex_tx, bool try_no_witness, bool try_witness)
+{
+    if (!IsHex(hex_tx)) {
+        return false;
+    }
+
+    std::vector<unsigned char> txData(ParseHex(hex_tx));
+
+    if (try_no_witness) {
+        CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+        try {
+            ssData >> tx;
+            if (ssData.eof() && (!try_witness || CheckMainchainTxScriptsSanity(tx))) {
                 return true;
             }
         } catch (const std::exception&) {

@@ -11,6 +11,7 @@
 
 class COutPoint;
 class CTransaction;
+class CMainchainTransaction;
 class uint256;
 
 //! 20,000 items with fp rate < 0.1% or 10,000 items and <0.0001%
@@ -52,6 +53,9 @@ private:
     unsigned char nFlags;
 
     unsigned int Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const;
+
+    template<typename TxType>
+    inline bool IsRelevantAndUpdate_(const TxType& tx);
 
     // Private constructor for CRollingBloomFilter, no restrictions on size
     CBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweak);
@@ -97,6 +101,7 @@ public:
 
     //! Also adds any outputs which match the filter to the filter (to match their spending txes)
     bool IsRelevantAndUpdate(const CTransaction& tx);
+    bool IsRelevantAndUpdate(const CMainchainTransaction& tx);
 
     //! Checks for empty and full filters to avoid wasting cpu
     void UpdateEmptyFull();

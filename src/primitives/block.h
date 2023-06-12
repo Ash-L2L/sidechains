@@ -184,7 +184,7 @@ class CMainchainBlock : public CMainchainBlockHeader
 {
 public:
     // network and disk
-    std::vector<CTransactionRef> vtx;
+    std::vector<CMainchainTransactionRef> vtx;
 
     // memory only
     mutable bool fChecked;

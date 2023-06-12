@@ -269,7 +269,7 @@ struct SidechainDeposit : public SidechainObj {
     uint8_t nSidechain;
     std::string strDest;
     CAmount amtUserPayout;
-    CMutableTransaction dtx; // Mainchain deposit transaction
+    CMainchainTransaction dtx; // Mainchain deposit transaction
     uint32_t nBurnIndex; // Deposit burn output index
     uint32_t nTx; // Deposit transaction number in mainchain block
     uint256 hashMainchainBlock;
