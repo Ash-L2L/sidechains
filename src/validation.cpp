@@ -22,6 +22,7 @@
 #include <cryptopp/asn.h>
 #include <cryptopp/eccrypto.h>
 #include <cryptopp/ecp.h>
+#include <cryptopp/modes.h>
 #include <cryptopp/oids.h>
 #include <cryptopp/osrng.h>
 #include <cryptopp/rng.h>
@@ -6935,3 +6936,47 @@ boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertex
     }
     return result;
 }
+
+typedef CryptoPP::DL_Keys_EC<CryptoPP::ECP> ECIES_ERC5630_Keys;
+typedef
+    CryptoPP::DL_KeyAgreementAlgorithm_DH<
+        CryptoPP::ECP::Point,
+        CryptoPP::NoCofactorMultiplication
+    >
+    ECIES_ERC5630_Key_Agreement;
+
+/* IIUC, Equivalent to ANSI-X9.63-KDF with SHA-512
+   see https://sci-hub.st/https://ieeexplore.ieee.org/document/1335427
+   and https://datatracker.ietf.org/doc/html/rfc8418#section-2.1
+*/
+typedef
+    CryptoPP::DL_KeyDerivationAlgorithm_P1363<
+        CryptoPP::ECP::Point,
+        false,
+        CryptoPP::P1363_KDF2<CryptoPP::SHA512>
+    >
+    ECIES_ERC5630_Key_Derivation;
+typedef
+    CryptoPP::DL_EncryptionAlgorithm_Xor<
+        CryptoPP::HMAC<CryptoPP::SHA256>,
+        false,
+        true
+    >
+    ECIES_ERC5630_Encryption;
+typedef
+    CryptoPP::ECIES<CryptoPP::ECP>
+    ECIES_ERC5630_Alg_Info;
+
+//typedef CryptoPP::CBC_Mode<CryptoPP::AES> AES_CBC;
+
+struct ECIES_ERC5630 : public CryptoPP::DL_ES<
+		ECIES_ERC5630_Keys,
+		ECIES_ERC5630_Key_Agreement,
+		ECIES_ERC5630_Key_Derivation,
+		ECIES_ERC5630_Encryption,
+		ECIES_ERC5630_Alg_Info
+    >
+{
+	// TODO: fix this after name is standardized
+	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "ECIES_ERC5630";}
+};
