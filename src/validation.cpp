@@ -19,6 +19,7 @@
 #include <consensus/tx_verify.h>
 #include <consensus/validation.h>
 #include <core_io.h>
+#include <cryptopp/aes.h>
 #include <cryptopp/asn.h>
 #include <cryptopp/eccrypto.h>
 #include <cryptopp/ecp.h>
@@ -6806,136 +6807,135 @@ public:
     }
 } instance_of_cmaincleanup;
 
-std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
-    CryptoPP::AutoSeededRandomPool rng;
+class DL_EncryptionAlgorithm_Aes256Cbc_HmacSha256 : public CryptoPP::DL_SymmetricEncryptionAlgorithm
+{
+public:
+    virtual ~DL_EncryptionAlgorithm_Aes256Cbc_HmacSha256() {}
 
-    // convert pubkey to crypto++
-    std::vector<uint8_t> pubkey_bytes =
-        std::vector<uint8_t>(pubkey.begin(), pubkey.end());
-    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
-                    CryptoPP::NoCofactorMultiplication,
-                    false,
-                    true>::PublicKey publicKey;
-    publicKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
-    publicKey.AccessGroupParameters().SetPointCompression(true);
-    CryptoPP::VectorSource pubkey_bytes_source(pubkey_bytes, false);
-    CryptoPP::ECP::Point pk_point;
-    publicKey.GetGroupParameters()
-             .GetCurve()
-             .DecodePoint(pk_point, pubkey_bytes.data(), pubkey_bytes.size());
-    publicKey.SetPublicElement(pk_point);
-
-    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
-                    CryptoPP::NoCofactorMultiplication,
-                    false,
-                    true>::Decryptor decryptor(rng,
-                                               CryptoPP::ASN1::secp256k1());
-    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
-                    CryptoPP::NoCofactorMultiplication,
-                    false,
-                    true>::Encryptor encryptor(publicKey);
-
-    // FIXME: remove
-    std::vector<uint8_t> pk_x_bytes =
-        std::vector<uint8_t>(32, uint8_t(0));
-    publicKey.GetPublicElement().x.Encode(pk_x_bytes.data(), 32);
-    std::vector<uint8_t> pk_y_bytes =
-        std::vector<uint8_t>(32, uint8_t(0));
-    publicKey.GetPublicElement().y.Encode(pk_y_bytes.data(), 32);
-    std::cout << "\n\nCrypto++ CPK: "
-              << HexStr(pubkey_bytes)
-              << "\n\nCrypto++ PK_X: "
-              << HexStr(pk_x_bytes)
-              << "\n\nCrypto++ PK_Y: "
-              << HexStr(pk_y_bytes)
-              << std::endl;
-
-
-    size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
-    std::vector<uint8_t> ciphertext =
-        std::vector<uint8_t>(ciphertext_length, uint8_t(0));
-    const unsigned char* plaintext_ptr =
-        reinterpret_cast<const unsigned char*>(plaintext.c_str());
-
-    encryptor.Encrypt(rng, plaintext_ptr, plaintext.size(), ciphertext.data());
-
-    return ciphertext;
-}
-
-boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertext, const CKey& secret) {
-    CryptoPP::AutoSeededRandomPool rng;
-
-    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
-                    CryptoPP::NoCofactorMultiplication,
-                    false,
-                    true>::PrivateKey secretKey;
-    secretKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
-
-    CryptoPP::Integer secret_value(secret.begin(),
-                                   32);
-    secretKey.SetPrivateExponent(secret_value);
-
-    // FIXME
-    std::vector<uint8_t> secret_value_bytes =
-        std::vector<uint8_t>(32, uint8_t(0));
-    secret_value.Encode(secret_value_bytes.data(), 32);
-    std::vector<uint8_t> secret_bytes =
-        std::vector<uint8_t>(32, uint8_t(0));
-    secretKey.GetPrivateExponent().Encode(secret_bytes.data(), 32);
-    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
-                    CryptoPP::NoCofactorMultiplication,
-                    false,
-                    true>::PublicKey pubkey;
-    pubkey.AccessGroupParameters().SetPointCompression(true);
-    secretKey.MakePublicKey(pubkey);
-    std::vector<uint8_t> pk_x_bytes =
-        std::vector<uint8_t>(32, uint8_t(0));
-    pubkey.GetPublicElement().x.Encode(pk_x_bytes.data(), 32);
-    std::vector<uint8_t> pk_y_bytes =
-        std::vector<uint8_t>(32, uint8_t(0));
-    pubkey.GetPublicElement().y.Encode(pk_y_bytes.data(), 32);
-    /*
-    std::cout << "\n\nCrypto++ SECRET_VALUE: "
-              << HexStr(secret_value_bytes)
-              << "\n\nCrypto++ SECRET: "
-              << HexStr(secret_bytes)
-              << "\n\nCrypto++ PK_X: "
-              << HexStr(pk_x_bytes)
-              << "\n\nCrypto++ PK_Y: "
-              << HexStr(pk_y_bytes)
-              << std::endl;
-    */
-
-
-    CryptoPP::ECIES<CryptoPP::ECP, CryptoPP::SHA256,
-                    CryptoPP::NoCofactorMultiplication,
-                    false,
-                    true>::Decryptor decryptor;
-    decryptor.AccessKey()
-             .AccessGroupParameters()
-             .Initialize(CryptoPP::ASN1::secp256k1());
-    decryptor.AccessKey().AccessGroupParameters().SetPointCompression(true);
-    decryptor.AccessKey().SetPrivateExponent(secret_value);
-
-    //size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
-    size_t max_plaintext_length = decryptor.MaxPlaintextLength(ciphertext.size());
-    std::vector<uint8_t> plaintext =
-        std::vector<uint8_t>(max_plaintext_length, uint8_t(0));
-
-    //encryptor.Encrypt(rng, plaintext_ptr, plaintext.size(), ciphertext.data());
-    CryptoPP::DecodingResult decoding_result =
-        decryptor.Decrypt(rng, 
-                          ciphertext.data(),
-                          ciphertext.size(),
-                          plaintext.data());
-    
-    boost::optional<std::vector<uint8_t>> result = boost::none;
-    if (decoding_result.isValidCoding) {
-        plaintext.resize(decoding_result.messageLength);
-        result = plaintext;
+    bool ParameterSupported(const char *name) const {return strcmp(name, CryptoPP::Name::EncodingParameters()) == 0;}
+    size_t GetSymmetricKeyLength(size_t plaintextLength) const {
+        // AES key (32 bytes) + HMAC-SHA256-256 key (32 bytes)
+        // AES by default uses 16-byte keys, but here we use 32 bytes
+        return 32 + 32;
     }
-    return result;
-}
+    size_t GetSymmetricCiphertextLength(size_t plaintextLength) const {
+        /* IV + plaintext + padding + MAC
+        ** if the plaintext size is a multiple of 16,
+        ** then a full 16-byte block is used as padding. */
+        size_t padding =
+            CryptoPP::AES::BLOCKSIZE
+            - (plaintextLength % CryptoPP::AES::BLOCKSIZE);
+        return CryptoPP::AES::BLOCKSIZE
+             + plaintextLength
+             + padding
+             + CryptoPP::HMAC<CryptoPP::SHA256>::DIGESTSIZE;
+    }
+    size_t GetMaxSymmetricPlaintextLength(size_t ciphertextLength) const {
+        // size without the IV and MAC
+        size_t without_iv_mac = CryptoPP::SaturatingSubtract(
+            ciphertextLength,
+            CryptoPP::AES::BLOCKSIZE
+            + CryptoPP::HMAC<CryptoPP::SHA256>::DIGESTSIZE
+        );
+        // one padding byte
+        size_t max_len = CryptoPP::SaturatingSubtract(without_iv_mac, 1);
+        return max_len;
+    }
+    void SymmetricEncrypt(
+        CryptoPP::RandomNumberGenerator &rng,
+        const CryptoPP::byte *key,
+        const CryptoPP::byte *plaintext,
+        size_t plaintextLength,
+        CryptoPP::byte *ciphertext,
+        const CryptoPP::NameValuePairs &parameters
+    ) const {
+        // generate a random IV
+        CryptoPP::SecByteBlock iv(CryptoPP::AES::BLOCKSIZE);
+        rng.GenerateBlock(iv, iv.size());
+
+        CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption enc;
+        enc.SetKeyWithIV(key, 32, iv);
+
+        // set the IV in the ciphertext
+        std::copy(iv.begin(), iv.end(), ciphertext);
+
+        size_t ciphertext_size =
+            GetSymmetricCiphertextLength(plaintextLength);
+
+        CryptoPP::ArraySource ss(plaintext, plaintextLength, true,
+            new CryptoPP::StreamTransformationFilter(enc,
+                new CryptoPP::ArraySink(
+                    ciphertext + CryptoPP::AES::BLOCKSIZE,
+                    ciphertext_size
+                    - CryptoPP::AES::BLOCKSIZE
+                    - CryptoPP::HMAC<CryptoPP::SHA256>::DIGESTSIZE
+                )
+            )
+        );
+
+        // compute the MAC
+        CryptoPP::HMAC<CryptoPP::SHA256> mac(key + 32, 32);
+        // update with the IV
+        mac.Update(ciphertext, CryptoPP::AES::BLOCKSIZE);
+        // FIXME: no ephemeral pubkey included for now
+        // update with the AES-CBC output
+        mac.Update(ciphertext + CryptoPP::AES::BLOCKSIZE,
+            ciphertext_size
+            - CryptoPP::AES::BLOCKSIZE
+            - CryptoPP::HMAC<CryptoPP::SHA256>::DIGESTSIZE
+        );
+        mac.Final(
+            ciphertext
+            + (ciphertext_size - CryptoPP::HMAC<CryptoPP::SHA256>::DIGESTSIZE)
+        );
+    }
+
+    CryptoPP::DecodingResult SymmetricDecrypt(
+        const CryptoPP::byte *key,
+        const CryptoPP::byte *ciphertext,
+        size_t ciphertextLength,
+        CryptoPP::byte *plaintext,
+        const CryptoPP::NameValuePairs &parameters
+    ) const
+    {
+        size_t plaintextLength = GetMaxSymmetricPlaintextLength(ciphertextLength);
+        
+        size_t aes_ciphertext_length =
+            ciphertextLength
+            - CryptoPP::AES::BLOCKSIZE
+            - CryptoPP::HMAC<CryptoPP::SHA256>::DIGESTSIZE;
+
+        const CryptoPP::byte *macKey = key + 32;
+        CryptoPP::HMAC<CryptoPP::SHA256> mac(macKey, 32);
+        // update with IV
+        mac.Update(ciphertext, CryptoPP::AES::BLOCKSIZE);
+        // FIXME: no ephemeral pubkey included for now
+        // update with the AES-CBC output
+        mac.Update(ciphertext + CryptoPP::AES::BLOCKSIZE,
+            aes_ciphertext_length
+        );
+        // check that the computed MAC is correct
+        if (!mac.Verify(
+                ciphertext + (ciphertextLength
+                              - CryptoPP::HMAC<CryptoPP::SHA256>::DIGESTSIZE)
+            ))
+            return CryptoPP::DecodingResult();
+
+        CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption dec;
+        dec.SetKeyWithIV(key, 32, ciphertext);
+
+        CryptoPP::ArraySource ss(
+            ciphertext + CryptoPP::AES::BLOCKSIZE,
+            aes_ciphertext_length,
+            true,
+            new CryptoPP::StreamTransformationFilter(dec,
+                new CryptoPP::ArraySink(plaintext, plaintextLength)
+            )
+        );
+
+        return CryptoPP::DecodingResult(plaintextLength);
+    }
+};
 
 typedef CryptoPP::DL_Keys_EC<CryptoPP::ECP> ECIES_ERC5630_Keys;
 typedef
@@ -6967,16 +6967,126 @@ typedef
     CryptoPP::ECIES<CryptoPP::ECP>
     ECIES_ERC5630_Alg_Info;
 
-//typedef CryptoPP::CBC_Mode<CryptoPP::AES> AES_CBC;
-
 struct ECIES_ERC5630 : public CryptoPP::DL_ES<
 		ECIES_ERC5630_Keys,
 		ECIES_ERC5630_Key_Agreement,
 		ECIES_ERC5630_Key_Derivation,
-		ECIES_ERC5630_Encryption,
+		DL_EncryptionAlgorithm_Aes256Cbc_HmacSha256,
 		ECIES_ERC5630_Alg_Info
     >
 {
 	// TODO: fix this after name is standardized
 	CRYPTOPP_STATIC_CONSTEXPR const char* CRYPTOPP_API StaticAlgorithmName() {return "ECIES_ERC5630";}
 };
+
+std::vector<uint8_t> encryptmemo(std::string plaintext, const CPubKey& pubkey) {
+    CryptoPP::AutoSeededRandomPool rng;
+
+    // convert pubkey to crypto++
+    std::vector<uint8_t> pubkey_bytes =
+        std::vector<uint8_t>(pubkey.begin(), pubkey.end());
+    ECIES_ERC5630::PublicKey publicKey;
+    publicKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
+    publicKey.AccessGroupParameters().SetPointCompression(true);
+    CryptoPP::VectorSource pubkey_bytes_source(pubkey_bytes, false);
+    CryptoPP::ECP::Point pk_point;
+    publicKey.GetGroupParameters()
+             .GetCurve()
+             .DecodePoint(pk_point, pubkey_bytes.data(), pubkey_bytes.size());
+    publicKey.SetPublicElement(pk_point);
+
+    ECIES_ERC5630::Decryptor decryptor(rng, CryptoPP::ASN1::secp256k1());
+    ECIES_ERC5630::Encryptor encryptor(publicKey);
+
+    // FIXME: remove
+    std::vector<uint8_t> pk_x_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    publicKey.GetPublicElement().x.Encode(pk_x_bytes.data(), 32);
+    std::vector<uint8_t> pk_y_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    publicKey.GetPublicElement().y.Encode(pk_y_bytes.data(), 32);
+    std::cout << "\n\nCrypto++ CPK: "
+              << HexStr(pubkey_bytes)
+              << "\n\nCrypto++ PK_X: "
+              << HexStr(pk_x_bytes)
+              << "\n\nCrypto++ PK_Y: "
+              << HexStr(pk_y_bytes)
+              << std::endl;
+
+
+    size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
+    std::vector<uint8_t> ciphertext =
+        std::vector<uint8_t>(ciphertext_length, uint8_t(0));
+    const unsigned char* plaintext_ptr =
+        reinterpret_cast<const unsigned char*>(plaintext.c_str());
+
+    encryptor.Encrypt(rng, plaintext_ptr, plaintext.size(), ciphertext.data());
+
+    return ciphertext;
+}
+
+boost::optional<std::vector<uint8_t>> decryptmemo(std::vector<uint8_t> ciphertext, const CKey& secret) {
+    CryptoPP::AutoSeededRandomPool rng;
+
+    ECIES_ERC5630::PrivateKey secretKey;
+    secretKey.AccessGroupParameters().Initialize(CryptoPP::ASN1::secp256k1());
+
+    CryptoPP::Integer secret_value(secret.begin(),
+                                   32);
+    secretKey.SetPrivateExponent(secret_value);
+
+    // FIXME
+    std::vector<uint8_t> secret_value_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    secret_value.Encode(secret_value_bytes.data(), 32);
+    std::vector<uint8_t> secret_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    secretKey.GetPrivateExponent().Encode(secret_bytes.data(), 32);
+    ECIES_ERC5630::PublicKey pubkey;
+    pubkey.AccessGroupParameters().SetPointCompression(true);
+    secretKey.MakePublicKey(pubkey);
+    std::vector<uint8_t> pk_x_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    pubkey.GetPublicElement().x.Encode(pk_x_bytes.data(), 32);
+    std::vector<uint8_t> pk_y_bytes =
+        std::vector<uint8_t>(32, uint8_t(0));
+    pubkey.GetPublicElement().y.Encode(pk_y_bytes.data(), 32);
+    /*
+    std::cout << "\n\nCrypto++ SECRET_VALUE: "
+              << HexStr(secret_value_bytes)
+              << "\n\nCrypto++ SECRET: "
+              << HexStr(secret_bytes)
+              << "\n\nCrypto++ PK_X: "
+              << HexStr(pk_x_bytes)
+              << "\n\nCrypto++ PK_Y: "
+              << HexStr(pk_y_bytes)
+              << std::endl;
+    */
+
+
+    ECIES_ERC5630::Decryptor decryptor;
+    decryptor.AccessKey()
+             .AccessGroupParameters()
+             .Initialize(CryptoPP::ASN1::secp256k1());
+    decryptor.AccessKey().AccessGroupParameters().SetPointCompression(true);
+    decryptor.AccessKey().SetPrivateExponent(secret_value);
+
+    //size_t ciphertext_length = encryptor.CiphertextLength(plaintext.size());
+    size_t max_plaintext_length = decryptor.MaxPlaintextLength(ciphertext.size());
+    std::vector<uint8_t> plaintext =
+        std::vector<uint8_t>(max_plaintext_length, uint8_t(0));
+
+    //encryptor.Encrypt(rng, plaintext_ptr, plaintext.size(), ciphertext.data());
+    CryptoPP::DecodingResult decoding_result =
+        decryptor.Decrypt(rng, 
+                          ciphertext.data(),
+                          ciphertext.size(),
+                          plaintext.data());
+    
+    boost::optional<std::vector<uint8_t>> result = boost::none;
+    if (decoding_result.isValidCoding) {
+        plaintext.resize(decoding_result.messageLength);
+        result = plaintext;
+    }
+    return result;
+}
