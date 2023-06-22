@@ -2,6 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <boost/optional.hpp>
+
 #include <qt/registerbitnamedialog.h>
 #include <qt/forms/ui_registerbitnamedialog.h>
 
@@ -131,7 +133,7 @@ void RegisterBitNameDialog::on_pushButtonRegister_clicked()
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!vpwallets[0]->RegisterBitName(tx, strFail, strName, commitment, in4, nFee))
+    if (!vpwallets[0]->RegisterBitName(tx, strFail, strName, commitment, in4, boost::none, nFee))
     {
         QMessageBox::critical(this, tr("Failed to register BitName!"),
             "Error: " + QString::fromStdString(strFail),
