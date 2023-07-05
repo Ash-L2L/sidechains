@@ -100,6 +100,9 @@ public:
 
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x359d17fc7cc60653fb72bbec271efab88af16ba9f15a55b060fe632c7de5e978");
+        // FIXME: replace with a real key hash
+        consensus.IcannRegistrationKeyHash =
+            uint256S("0x0000000000000000000000000000000000000000000000000000000000000000");
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -193,6 +196,10 @@ public:
 
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x6fb2c5081b13ecf369b324db61406244c7df519b4676e28b536a4ef546e387eb");
+        // FIXME: replace with a real key hash
+        consensus.IcannRegistrationKeyHash =
+            uint256S("0x0000000000000000000000000000000000000000000000000000000000000000");
+
 
         pchMessageStart[0] = 0x36;
         pchMessageStart[1] = 0x4d;

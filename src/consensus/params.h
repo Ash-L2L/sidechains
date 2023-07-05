@@ -74,6 +74,8 @@ struct Params {
     int64_t nPowTargetTimespan;
     int64_t DifficultyAdjustmentInterval() const { return nPowTargetTimespan / nPowTargetSpacing; }
     uint256 defaultAssumeValid;
+    // Hash of the public key used to reserve ICANN Bitnames
+    uint256 IcannRegistrationKeyHash;
 };
 } // namespace Consensus
 

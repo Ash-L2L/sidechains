@@ -10,6 +10,9 @@
 #include <script/interpreter.h>
 #include <consensus/validation.h>
 
+#include <openssl/x509v3.h>
+#include <secp256k1.h>
+
 // TODO remove the following dependencies
 #include <chain.h>
 #include <coins.h>
@@ -157,6 +160,77 @@ int64_t GetTransactionSigOpCost(const CTransaction& tx, const CCoinsViewCache& i
     return nSigOps;
 }
 
+/* Check that an X509 certificate is valid, IGNORING the validity period.
+   The validity period should be checked during block validation.
+   Does NOT validate against a particular domain name
+   Does NOT check for revocation
+   Does NOT check CT */
+bool validateCertificate(X509* cert, X509_STORE* store) {
+    // use the first valid time as the timestamp
+    const ASN1_TIME* not_before_asn1 = X509_get0_notBefore(cert);
+    tm not_before_tm;
+    if (ASN1_TIME_to_tm(not_before_asn1, &not_before_tm) != 1) {
+        return false;
+    }
+    // one second after the minimum time
+    time_t validation_time = mktime(&not_before_tm);
+    if (validation_time < std::numeric_limits<time_t>::max()) {
+        validation_time++;
+    } else {
+        return false;
+    }
+    
+    X509_STORE_CTX* ctx = X509_STORE_CTX_new();
+    if (!ctx) {
+        // Handle context creation error
+        return false;
+    }
+
+    // set check time flag so that we can ignore the validity period
+    X509_STORE_set_flags(
+        store,
+        X509_V_FLAG_X509_STRICT & X509_V_FLAG_USE_CHECK_TIME
+    );
+    if (X509_STORE_CTX_init(ctx, store, cert, nullptr) != 1) {
+        // Handle context initialization error
+        X509_STORE_CTX_free(ctx);
+        return false;
+    }
+    X509_STORE_CTX_set_time(ctx, 0, validation_time);
+
+    int result = X509_verify_cert(ctx);
+    X509_STORE_CTX_free(ctx);
+
+    if (result == 1) {
+        // Certificate is valid
+        return true;
+    } else {
+        // Certificate validation failed
+        return false;
+    }
+}
+
+/* Check that a certificate applies to the specified domain name.
+ * Does NOT check that the certificate itself is valid.
+ * The domain name MUST be provided in 'Preferred name syntax' (RFC 1034 §3.5).
+ * International domain names MUST be given in A-label form. */
+bool validateCertificateIncludesDomain(X509* cert, std::string domain_name) {
+    const unsigned int FLAGS = X509_CHECK_FLAG_SINGLE_LABEL_SUBDOMAINS;
+    int result = X509_check_host(
+        cert,
+        domain_name.data(),
+        domain_name.length(),
+        FLAGS,
+        nullptr
+    );
+    if (result == 1) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
 bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fCheckDuplicateInputs)
 {
     // Basic checks that don't depend on any context
@@ -172,10 +246,50 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
     bool fCreateBitName = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
     bool fUpdateBitName = tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION;
     bool fBitName = fCreateBitName || fUpdateBitName;
+    bool fBitNameRegistration =
+        fCreateBitName && (tx.name_hash != uint256());
 
     // Create BitName transactions must have at least 1 output
     if (fCreateBitName && tx.vout.size() < 1)
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-create-bitname-vout-size");
+    // ICANN BitName registrations must have a valid signature over the name hash and first output
+    if (fBitNameRegistration && tx.fIcann) {
+        uint256 registration_output_hash = SerializeHash(tx.vout[1]);
+        CSHA256 hasher = CSHA256();
+        uint256 signable_registration_hash = uint256();
+        hasher.Write(tx.name_hash.begin(), tx.name_hash.size());
+        hasher.Write(
+            registration_output_hash.begin(),
+            registration_output_hash.size()
+        );
+        hasher.Finalize(signable_registration_hash.begin());
+
+        // see if we can recover a pubkey from the signature
+        CPubKey pubkey = CPubKey();
+        std::vector<uint8_t> vchSig =
+            std::vector<uint8_t>(tx.icann_sig.begin(), tx.icann_sig.end());
+        if (!pubkey.RecoverCompact(signable_registration_hash, vchSig)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-icann-sig");
+        }
+        if (!pubkey.IsFullyValid()) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-icann-sig");
+        }
+        secp256k1_context* secp256k1_ctxt = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+        secp256k1_ecdsa_signature ecdsa_sig;
+        if (secp256k1_ecdsa_signature_parse_compact(secp256k1_ctxt, &ecdsa_sig, tx.icann_sig.data()) != 1) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-icann-sig");
+        }
+        std::vector<uint8_t> der_sig =
+            std::vector<uint8_t>(CPubKey::SIGNATURE_SIZE, 0);
+        size_t der_sig_size = CPubKey::SIGNATURE_SIZE;
+        if (secp256k1_ecdsa_signature_serialize_der(secp256k1_ctxt, der_sig.data(), &der_sig_size, &ecdsa_sig) != 1) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-icann-sig");
+        }
+        if (!pubkey.Verify(signable_registration_hash, der_sig)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-icann-sig");
+        }
+    }
+
     // Update BitName transactions must have at least 1 output
     if (fUpdateBitName && tx.vout.size() < 1)
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-update-bitname-vout-size");

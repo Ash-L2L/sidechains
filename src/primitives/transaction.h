@@ -14,6 +14,9 @@
 #include <serialize.h>
 #include <uint256.h>
 
+#include <openssl/crypto.h>
+#include <openssl/x509.h>
+
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 static const int TRANSACTION_BITNAME_CREATE_VERSION = 10;
 static const int TRANSACTION_BITNAME_UPDATE_VERSION = 11;
@@ -216,6 +219,10 @@ struct CMutableTransaction;
  * - in_addr in4 (only used for registrations)
  * - bool fCPK (only used for registrations, to register a compressed pubkey)
  * - CPubKey cpk (only used for registrations)
+ * - bool fIcann (used to indicate that an Icann domain is being registered)
+ * - X509* ca_cert (used to provide proof that the registrar owns the claimed icann domain)
+ * - std::array<uint8_t, 65> icann_sig (used to authenticate icann registrations) 
+ * - std::vector<uint8_t> icann_witness (used to provide proof that the registrar owns the claimed icann domain)
  * 
  *  * Update BitName version 11 tx:
  * - int32_t nVersion
@@ -288,6 +295,25 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
             ::Unserialize(s, cpk);
             tx.cpk = cpk;
         }
+        s >> tx.fIcann;
+        if (tx.fIcann) {
+            std::vector<uint8_t> ca_cert_der;
+            s >> ca_cert_der;
+            uint8_t* ca_cert_der_ptr = ca_cert_der.data();
+            X509* ca_cert_ptr =
+                d2i_X509(
+                    nullptr,
+                    reinterpret_cast<const unsigned char**>(&ca_cert_der),
+                    ca_cert_der.size()
+                );
+            if (!ca_cert_ptr) {
+                throw std::ios_base::failure("Failed to deserialize ca cert");
+            }
+            tx.ca_cert = ca_cert_ptr;
+            CFlatData icann_sig = CFlatData((void*) tx.icann_sig.begin(), (void*) tx.icann_sig.end());
+            s >> icann_sig;
+            s >> tx.icann_witness;
+        }
     }
 
     if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
@@ -354,6 +380,19 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         } else {
             s << false;
         }
+        s << tx.fIcann;
+        if (tx.fIcann) {
+            uint8_t* ca_cert_der_ptr = nullptr;
+            size_t ca_cert_der_length = i2d_X509((*tx.ca_cert), &ca_cert_der_ptr);
+            std::vector<uint8_t> ca_cert_der =
+                std::vector<uint8_t>(
+                    ca_cert_der_ptr,
+                    ca_cert_der_ptr + ca_cert_der_length
+                );
+            s << ca_cert_der;
+            s << CFlatData((void*) tx.icann_sig.begin(), (void*) tx.icann_sig.end());
+            s << tx.icann_witness;
+        }
 
     } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
         s << tx.fCommitment;
@@ -403,12 +442,17 @@ public:
 
     const bool fCommitment = false;
     const bool fIn4 = false;
+    const bool fIcann = false;
     const uint256 commitment = uint256();
     const uint256 name_hash = uint256();
     // statement of knowledge for registering BitName
     const uint256 sok = uint256();
     const in_addr in4 = { .s_addr = 0 };
     const boost::optional<CPubKey> cpk = boost::none;
+    const boost::optional<X509*> ca_cert = boost::none;
+    const std::array<uint8_t, CPubKey::COMPACT_SIGNATURE_SIZE> icann_sig = {0};
+    // FIXME: remove
+    const boost::optional<std::vector<uint8_t>> icann_witness = boost::none;
 
 private:
     /** Memory only. */
@@ -497,11 +541,15 @@ struct CMutableTransaction
 
     bool fCommitment = false;
     bool fIn4 = false;
+    bool fIcann = false;
     uint256 commitment = uint256();
     uint256 name_hash = uint256();
     uint256 sok = uint256();
     in_addr in4 = { .s_addr = 0 };
     boost::optional<CPubKey> cpk = boost::none;
+    boost::optional<X509*> ca_cert = boost::none;
+    std::array<uint8_t, CPubKey::COMPACT_SIGNATURE_SIZE> icann_sig = {0};
+    boost::optional<std::vector<uint8_t>> icann_witness = boost::none;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

@@ -220,6 +220,9 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
         if (tx.cpk) {
             entry.pushKV("pubkey", HexStr((*tx.cpk).begin(), (*tx.cpk).end()));
         }
+        if (tx.fIcann) {
+            entry.pushKV("icann_witness", HexStr((*tx.icann_witness)));
+        }
     } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
         if (tx.fCommitment) {
             entry.pushKV("commitment", tx.commitment.ToString());

@@ -2410,6 +2410,33 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             // registration
             if (tx.name_hash != uint256()) {
                 // BitName registration
+
+                // check that the icann signature matches the icann key
+                // signature is checked in tx_verify.cpp, no need to verify here
+                if (tx.fIcann) {
+                    // see if we can recover a pubkey from the signature
+                    uint256 registration_output_hash = SerializeHash(tx.vout[1]);
+                    CSHA256 hasher = CSHA256();
+                    uint256 signable_registration_hash = uint256();
+                    hasher.Write(tx.name_hash.begin(), tx.name_hash.size());
+                    hasher.Write(
+                        registration_output_hash.begin(),
+                        registration_output_hash.size()
+                    );
+                    hasher.Finalize(signable_registration_hash.begin());
+                    CPubKey pubkey = CPubKey();
+                    std::vector<uint8_t> vchSig =
+                        std::vector<uint8_t>(tx.icann_sig.begin(), tx.icann_sig.end());
+                    if (!pubkey.RecoverCompact(signable_registration_hash, vchSig)) {
+                        return state.DoS(100, error("ConnectBlock(): Invalid BitName registration - bad icann signature"),
+                        REJECT_INVALID, "bad-icann-sig");
+                    }
+                    if (pubkey.GetHash() != chainparams.GetConsensus().IcannRegistrationKeyHash) {
+                        return state.DoS(100, error("ConnectBlock(): Invalid BitName registration - bad icann signature"),
+                        REJECT_INVALID, "bad-icann-sig");
+                    }
+                }
+
                 BitName bitname;
                 bitname.name_hash = tx.name_hash;
                 bitname.commitment.push_front(tx.commitment);
@@ -2425,6 +2452,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                     bitname.cpk.push_front(tx.cpk);
                 }
                 bitname.txid.push_front(tx.GetHash());
+                bitname.fIcann = tx.fIcann;
 
                 mapBitName.insert({bitname.name_hash, bitname});
 

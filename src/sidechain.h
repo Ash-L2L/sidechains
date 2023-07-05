@@ -140,6 +140,9 @@ struct BitName : public BitNameObj {
     // The first element is the current txid.
     std::deque<uint256> txid {};
 
+    // flag indicating that this is a confirmed ICANN bitname
+    bool fIcann = false;
+
     ADD_SERIALIZE_METHODS
 
     template <typename Stream, typename Operation>
@@ -149,6 +152,7 @@ struct BitName : public BitNameObj {
         READWRITE(in4);
         READWRITE(cpk);
         READWRITE(txid);
+        READWRITE(fIcann);
     }
 };
 
