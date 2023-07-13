@@ -4053,18 +4053,14 @@ UniValue listmybitnamereservations(const JSONRPCRequest& request)
         obj.pushKV("outputtxid", o.tx->GetHash().ToString());
         obj.pushKV("outputn", o.i);
         obj.pushKV("confirmations", o.nDepth);
-        obj.pushKV("amountassetin", o.tx->amountAssetIn);
-        obj.pushKV("ncontroln", o.tx->nControlN);
-        obj.pushKV("id", o.tx->nAssetID.ToString());
         obj.pushKV("name", o.tx->strName);
         obj.pushKV("salt", o.tx->sok.ToString());
 
         // Get BitNameDB data
         BitNameReservation bitNameReservation;
-        if (!pbitnamereservationtree->GetBitNameReservation(o.tx->nAssetID, bitNameReservation))
+        if (!pbitnamereservationtree->GetBitNameReservation(o.tx->GetHash(), bitNameReservation))
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to load bitname reservation data!");
 
-        // FIXME: is `id` included twice?
         obj.pushKV("id", bitNameReservation.nID.ToString());
         obj.pushKV("commitment", bitNameReservation.commitment.ToString());
         obj.pushKV("creationtxid", bitNameReservation.txid.ToString());
@@ -4110,15 +4106,17 @@ UniValue listmybitnames(const JSONRPCRequest& request)
         obj.pushKV("outputtxid", o.tx->GetHash().ToString());
         obj.pushKV("outputn", o.i);
         obj.pushKV("confirmations", o.nDepth);
-        obj.pushKV("amountassetin", o.tx->amountAssetIn);
-        obj.pushKV("ncontroln", o.tx->nControlN);
-        obj.pushKV("id", o.tx->nAssetID.ToString());
 
+        // get coin data
+        Coin coin;
+        if (!pcoinsdbview->GetCoin(COutPoint(o.tx->GetHash(), o.i), coin))
+            throw JSONRPCError(RPC_MISC_ERROR, "Failed to load bitname utxo data!");
         // Get BitNameDB data
         BitName bitname;
-        if (!pbitnametree->GetBitName(o.tx->nAssetID, bitname))
+        if (!pbitnametree->GetBitName(coin.nAssetID, bitname))
             throw JSONRPCError(RPC_MISC_ERROR, "Failed to load bitname data!");
 
+        obj.pushKV("id", bitname.name_hash.ToString());
         obj.pushKV("name_hash", bitname.name_hash.ToString());
         boost::optional<uint256> commitment = bitname.commitment.front();
         if (commitment) {
@@ -4141,6 +4139,7 @@ UniValue listmybitnames(const JSONRPCRequest& request)
     return ar;
 }
 
+/*
 UniValue transferbitname(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -4203,6 +4202,7 @@ UniValue transferbitname(const JSONRPCRequest& request)
     response.pushKV("txid", txidOut.ToString());
     return response;
 }
+*/
 
 UniValue rescanblockchain(const JSONRPCRequest& request)
 {
@@ -4571,7 +4571,7 @@ static const CRPCCommand commands[] =
     { "BitNames",          "updatebitname",                    &updatebitname,                    {"name", "commitment", "ipv4", "nfee", "dest"} },
     { "BitNames",          "listmybitnamereservations",        &listmybitnamereservations,       {} },
     { "BitNames",          "listmybitnames",                   &listmybitnames,                  {} },
-    { "BitNames",          "transferbitname",                  &transferbitname,                 {"txid", "destination", "fee"} },
+    //{ "BitNames",          "transferbitname",                  &transferbitname,                 {"txid", "destination", "fee"} },
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)

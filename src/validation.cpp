@@ -107,7 +107,6 @@ enum DisconnectResult
 };
 
 struct PerBlockConnectTrace {
-    std::map<uint256, BitNameTransactionData> mapAssetData;
     CBlockIndex* pindex = nullptr;
     std::shared_ptr<const CBlock> pblock;
     std::shared_ptr<std::vector<CTransactionRef>> conflictedTxs;
@@ -169,10 +168,6 @@ public:
         if (reason == MemPoolRemovalReason::CONFLICT) {
             blocksConnected.back().conflictedTxs->emplace_back(std::move(txRemoved));
         }
-    }
-
-    void SetBitNameData(const uint256& txid, const BitNameTransactionData& data) {
-        blocksConnected.back().mapAssetData[txid] = data;
     }
 };
 
@@ -1428,37 +1423,20 @@ void CChainState::InvalidBlockFound(CBlockIndex *pindex, const CValidationState 
     }
 }
 
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint256& nAssetIDOut, uint256 nNewAssetIDIn)
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight)
 {
-    amountAssetInOut = CAmount(0); // Track asset inputs
-    nBitNameNOut = -1; // Track bitname outputs
-    nAssetIDOut = uint256(); // Track asset ID
     if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
         // mark inputs spent
         for (size_t x = 0; x < tx.vin.size(); x++) {
             txundo.vprevout.emplace_back();
-            bool fBitNameReservation = false;
-            bool fBitName = false;
-            uint256 nAssetID = uint256();
-            bool is_spent = inputs.SpendCoin(tx.vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &txundo.vprevout.back());
-
-            // Update nAssetIDOut if SpendCoin returns a non-zero asset ID
-            if (nAssetID != uint256())
-                nAssetIDOut = nAssetID;
-
+            bool is_spent = inputs.SpendCoin(tx.vin[x].prevout, &txundo.vprevout.back());
             assert(is_spent);
-
-            if (fBitNameReservation)
-                amountAssetInOut += txundo.vprevout.back().out.nValue;
-
-            if (fBitName)
-                nBitNameNOut = x;
         }
     }
 
     // add outputs
-    AddCoins(inputs, tx, nHeight, nAssetIDOut, amountAssetInOut, nBitNameNOut, nNewAssetIDIn);
+    AddCoins(inputs, tx, nHeight);
 }
 
 bool CScriptCheck::operator()() {
@@ -1537,6 +1515,12 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 const COutPoint &prevout = tx.vin[i].prevout;
                 const Coin& coin = inputs.AccessCoin(prevout);
                 assert(!coin.IsSpent());
+
+                // in an icann batch registration, do not check scripts
+                // on bitname inputs
+                if (tx.nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION
+                    && coin.fBitName)
+                    continue;
 
                 // We very carefully only pass in things to CScriptCheck which
                 // are clearly committed to by tx' witness hash. This provides
@@ -1767,7 +1751,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                 return DISCONNECT_FAILED;
             }
         }
-        if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        else if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
             // Undo BitName creation & revert asset ID #
             // A bitname registration must reveal the `name_hash` parameter
             if (tx.name_hash != uint256()) {
@@ -1800,6 +1784,41 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
                     return DISCONNECT_FAILED;
                 }
             }
+        } else if (tx.nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION) {
+            // use the tx undo to resolve the spent bitnames
+            CTxUndo &txundo = blockUndo.vtxundo[i-1];
+
+            for (unsigned int i = 0; i < tx.icann_registrations.size(); ++i) {
+                // calculate asset ID from name hash
+                std::string plaintext_name = tx.icann_registrations[i];
+                uint256 name_hash;
+                CHash256().Write(
+                    (unsigned char*) plaintext_name.data(),
+                    plaintext_name.size()
+                )
+                .Finalize((unsigned char*) &name_hash);
+                BitName bitname;
+                if (!pbitnametree->GetBitName(name_hash, bitname)) {
+                    error("DisconnectBlock(): Failed to locate BitNameDB BitName!");
+                    return DISCONNECT_FAILED;
+                }
+                if (!pbitnametree->RemoveBitName(name_hash)) {
+                    error("DisconnectBlock(): Failed to remove BitNameDB BitName!");
+                    return DISCONNECT_FAILED;
+                }
+                // if the corresponding input is a bitname
+                // then roll back txid and reset Icann status
+                if (i < tx.vin.size()) {
+                    if (txundo.vprevout[i].fBitName) {
+                        bitname.txid.pop_front();
+                        bitname.fIcann = false;
+                        if (!pbitnametree->WriteBitName(bitname)) {
+                            error("DisconnectBlock(): Failed to write BitNameDB BitName!");
+                            return DISCONNECT_FAILED;
+                        }   
+                    }
+                }
+            }
         }
 
         // Check that all outputs are available and match the outputs in the block itself
@@ -1811,10 +1830,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
             if (!scriptPubKey.IsUnspendable()) {
                 COutPoint out(hash, o);
                 Coin coin;
-                bool fBitNameReservation = false;
-                bool fBitName = false;
-                uint256 nAssetID = uint256();
-                bool is_spent = view.SpendCoin(out, fBitNameReservation, fBitName, nAssetID, &coin);
+                bool is_spent = view.SpendCoin(out, &coin);
                 if (!is_spent || tx.vout[o] != coin.out || pindex->nHeight != coin.nHeight || is_coinbase != coin.fCoinBase) {
                     fClean = false; // transaction output mismatch
                 }
@@ -2461,9 +2477,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 const uint256 reservationID = reservationInput.prevout.hash;
                 if (!pbitnamereservationtree->RemoveReservation(reservationID))
                     return state.Error("ConnectBlock(): Failed to remove BitNameReservationDB BitName Reservation!");
-
-                // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
-                nNewAssetID = bitname.name_hash;
             } else {
                 // BitName reservation
                 BitNameReservation bitNameReservation;
@@ -2472,10 +2485,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 bitNameReservation.txid = tx.GetHash();
 
                 vBitNameReservation.push_back(bitNameReservation);
-
-                // Copy new asset ID, we will pass it to CoinDB when we UpdateCoins
-                // FIXME: is this correct?
-                nNewAssetID = bitNameReservation.nID;
             }
         } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
             if (tx.vout.size() < 1) {
@@ -2510,6 +2519,49 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
             mapBitName.insert({bitname.name_hash, bitname});
 
+        } else if (tx.nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION) {
+            
+            for (unsigned int i; i < tx.icann_registrations.size(); ++i) {
+                std::string plaintext_name = tx.icann_registrations[i];
+                // compute name hash / asset ID from plaintext name
+                uint256 name_hash;
+                CHash256().Write(
+                    (unsigned char*) plaintext_name.data(),
+                    plaintext_name.size()
+                )
+                .Finalize((unsigned char*) &name_hash);
+                // get the bitname to update
+                BitName bitname;
+                auto search = mapBitName.find(name_hash);
+                if (search != mapBitName.end()) {
+                    // check that we are spending the corresponding bitname
+                    if (i >= tx.vin.size())
+                        return state.DoS(100, error("ConnectBlock(): Invalid BitName registration - bitname already exists"),
+                            REJECT_INVALID, "bad-update-bitname-already-exists");
+                    Coin should_be_bitname = view.AccessCoin(tx.vin[i].prevout);
+                    // asset ID checked in tx_verify.cpp
+                    if (!should_be_bitname.fBitName)
+                        return state.DoS(100, error("ConnectBlock(): Invalid BitName registration - bitname already exists"),
+                            REJECT_INVALID, "bad-update-bitname-already-exists");
+                    bitname = search->second;
+                } else if (pbitnametree->GetBitName(name_hash, bitname)) {
+                    // check that we are spending the corresponding bitname
+                    if (i >= tx.vin.size())
+                        return state.DoS(100, error("ConnectBlock(): Invalid BitName registration - bitname already exists"),
+                            REJECT_INVALID, "bad-update-bitname-already-exists");
+                    Coin should_be_bitname = view.AccessCoin(tx.vin[i].prevout);
+                    // asset ID checked in tx_verify.cpp
+                    if (!should_be_bitname.fBitName)
+                        return state.DoS(100, error("ConnectBlock(): Invalid BitName registration - bitname already exists"),
+                            REJECT_INVALID, "bad-update-bitname-already-exists");
+                } else {
+                    bitname.name_hash = name_hash;
+                }
+                bitname.txid.push_front(tx.GetHash());
+                bitname.fIcann = true;
+                mapBitName.insert({bitname.name_hash, bitname});
+            }
+
         }
 
         CTxUndo undoDummy;
@@ -2517,21 +2569,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             blockundo.vtxundo.push_back(CTxUndo());
         }
 
-        CAmount amountAssetIn = CAmount(0);
-        int nBitNameN = -1;
-        uint256 nAssetID = uint256();
-        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, amountAssetIn, nBitNameN, nAssetID, nNewAssetID);
-
-        BitNameTransactionData data;
-        data.amountAssetIn = amountAssetIn;
-        data.nBitNameN = nBitNameN;
-        data.nAssetID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
-        data.txid = tx.GetHash();
-        // FIXME: is this correct?
-        if (connectTrace && (amountAssetIn > 0
-                            || tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION
-                            || tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION))
-            connectTrace->SetBitNameData(tx.GetHash(), data);
+        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight);
     }
     int64_t nTime3 = GetTimeMicros(); nTimeConnect += nTime3 - nTime2;
     LogPrint(BCLog::BENCH, "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs (%.2fms/blk)]\n", (unsigned)block.vtx.size(), MILLI * (nTime3 - nTime2), MILLI * (nTime3 - nTime2) / block.vtx.size(), nInputs <= 1 ? 0 : MILLI * (nTime3 - nTime2) / (nInputs-1), nTimeConnect * MICRO, nTimeConnect * MILLI / nBlocksTotal);
@@ -3407,7 +3445,7 @@ bool CChainState::ActivateBestChain(CValidationState &state, const CChainParams&
 
             for (const PerBlockConnectTrace& trace : connectTrace.GetBlocksConnected()) {
                 assert(trace.pblock && trace.pindex);
-                GetMainSignals().BlockConnected(trace.mapAssetData, trace.pblock, trace.pindex, trace.conflictedTxs);
+                GetMainSignals().BlockConnected(trace.pblock, trace.pindex, trace.conflictedTxs);
             }
         }
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
@@ -5038,39 +5076,17 @@ bool CChainState::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& i
         return error("ReplayBlock(): ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
     }
 
-    CAmount amountAssetIn = CAmount(0);
-    int nBitNameN = -1;
     for (const CTransactionRef& tx : block.vtx) {
         if (tx->IsCoinBase())
             continue;
 
-        uint256 nAssetID = uint256();
-        uint256 nNewAssetID = uint256();
-
         for (size_t x = 0; x < tx->vin.size(); x++) {
-            bool fBitNameReservation = false;
-            bool fBitName = false;
             Coin coin;
-            inputs.SpendCoin(tx->vin[x].prevout, fBitNameReservation, fBitName, nAssetID, &coin);
-
-            if (fBitNameReservation)
-                amountAssetIn += coin.out.nValue;
-            if (fBitName)
-                nBitNameN = x;
-        }
-
-        if (tx->nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
-            if (tx->name_hash != uint256()) {
-                // registration
-                nNewAssetID = tx->name_hash;
-            } else {
-                // reservation
-                nNewAssetID = tx->GetHash();
-            }
+            inputs.SpendCoin(tx->vin[x].prevout, &coin);
         }
 
         // Pass check = true as every addition may be an overwrite.
-        AddCoins(inputs, *tx, pindex->nHeight, nAssetID, amountAssetIn, nBitNameN, nNewAssetID, true);
+        AddCoins(inputs, *tx, pindex->nHeight, true);
     }
     return true;
 }

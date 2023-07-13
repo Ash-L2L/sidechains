@@ -233,6 +233,12 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
         if (tx.cpk) {
             entry.pushKV("pubkey", HexStr((*tx.cpk).begin(), (*tx.cpk).end()));
         }
+    } else if (tx.nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION) {
+        UniValue icann_registrations(UniValue::VARR);
+        for (const auto& registration : tx.icann_registrations) {
+            icann_registrations.push_back(UniValue(registration));
+        }
+        entry.pushKV("icann_registrations", icann_registrations);
     }
 
     if (include_hex) {

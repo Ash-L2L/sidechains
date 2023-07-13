@@ -20,6 +20,7 @@
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 static const int TRANSACTION_BITNAME_CREATE_VERSION = 10;
 static const int TRANSACTION_BITNAME_UPDATE_VERSION = 11;
+static const int TRANSACTION_BITNAME_REGISTER_ICANN_VERSION = 13;
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
@@ -221,7 +222,7 @@ struct CMutableTransaction;
  * - CPubKey cpk (only used for registrations)
  * - bool fIcann (used to indicate that an Icann domain is being registered)
  * - X509* ca_cert (used to provide proof that the registrar owns the claimed icann domain)
- * - std::array<uint8_t, 65> icann_sig (used to authenticate icann registrations) 
+ * - std::array<uint8_t, 65> icann_sig (used to authenticate icann registrations)
  * - std::vector<uint8_t> icann_witness (used to provide proof that the registrar owns the claimed icann domain)
  * 
  *  * Update BitName version 11 tx:
@@ -240,6 +241,19 @@ struct CMutableTransaction;
  * - uint256 commitment
  * - in_addr in4
  * - CPubKey cpk
+ * 
+ * Register Multiple Icann Bitnames version 13 tx:
+ * - int32_t nVersion
+ * - unsigned char dummy = 0x00
+ * - unsigned char flags (!= 0)
+ * - std::vector<CTxIn> vin
+ * - std::vector<CTxOut> vout
+ * - std::vector<uint8_t> memo
+ * - if (flags & 1):
+ *   - CTxWitness wit;
+ * - uint32_t nLockTime
+ * - std::vector<std::string> icann_registrations (plaintext names)
+ * - std::array<uint8_t, 65> icann_sig (used to authenticate icann registrations)
  */
 template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
@@ -335,6 +349,12 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
             tx.cpk = cpk;
         }
     }
+
+    if (tx.nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION) {
+        s >> tx.icann_registrations;
+        CFlatData icann_sig = CFlatData((void*) tx.icann_sig.begin(), (void*) tx.icann_sig.end());
+        s >> icann_sig;
+    }
 }
 
 template<typename Stream, typename TxType>
@@ -408,6 +428,9 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         if (fCPK) {
             s << (*tx.cpk);
         }
+    } else if (tx.nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION) {
+        s << tx.icann_registrations;
+        s << CFlatData((void*) tx.icann_sig.begin(), (void*) tx.icann_sig.end());
     }
 }
 
@@ -453,6 +476,10 @@ public:
     const std::array<uint8_t, CPubKey::COMPACT_SIGNATURE_SIZE> icann_sig = {0};
     // FIXME: remove
     const boost::optional<std::vector<uint8_t>> icann_witness = boost::none;
+    // plaintext bitnames
+    const std::vector<std::string> icann_registrations =
+        std::vector<std::string>();
+
 
 private:
     /** Memory only. */
@@ -550,6 +577,9 @@ struct CMutableTransaction
     boost::optional<X509*> ca_cert = boost::none;
     std::array<uint8_t, CPubKey::COMPACT_SIGNATURE_SIZE> icann_sig = {0};
     boost::optional<std::vector<uint8_t>> icann_witness = boost::none;
+    // plaintext bitnames
+    std::vector<std::string> icann_registrations =
+        std::vector<std::string>();
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

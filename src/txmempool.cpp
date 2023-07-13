@@ -625,11 +625,8 @@ static void CheckInputsAndUpdateCoins(const CTransaction& tx, CCoinsViewCache& m
     CAmount txfee = 0;
     bool fCheckResult = tx.IsCoinBase() || Consensus::CheckTxInputs(tx, state, mempoolDuplicate, spendheight, txfee);
     assert(fCheckResult);
-    CAmount amountAssetIn = CAmount(0);
-    int nControlN = -1;
-    uint256 nAssetID = uint256();
     CTxUndo undo;
-    UpdateCoins(tx, mempoolDuplicate, undo, 1000000, amountAssetIn, nControlN, nAssetID);
+    UpdateCoins(tx, mempoolDuplicate, undo, 1000000);
 }
 
 void CTxMemPool::check(const CCoinsViewCache *pcoins) const

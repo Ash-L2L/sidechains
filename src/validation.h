@@ -55,16 +55,6 @@ struct ChainTxData;
 struct PrecomputedTransactionData;
 struct LockPoints;
 
-struct BitNameTransactionData {
-    uint256 txid;
-    // FIXME: remove
-    CAmount amountAssetIn;
-    // FIXME: remove
-    int nBitNameN;
-    // FIXME: rename
-    uint256 nAssetID;
-};
-
 /** Default for -whitelistrelay. */
 static const bool DEFAULT_WHITELISTRELAY = true;
 /** Default for -whitelistforcerelay. */
@@ -355,7 +345,7 @@ int VersionBitsTipStateSinceHeight(const Consensus::Params& params, Consensus::D
 
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight, CAmount& amountAssetInOut, int& nBitNameNOut, uint256& nAssetIDOut, const uint256 nNewAssetIDIn = uint256());
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo& undo, int nHeight);
 
 /** Transaction validation functions */
 

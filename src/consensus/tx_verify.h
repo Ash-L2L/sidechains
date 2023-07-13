@@ -7,6 +7,7 @@
 
 #include <amount.h>
 
+#include <string>
 #include <stdint.h>
 #include <vector>
 
@@ -14,6 +15,8 @@ class CBlockIndex;
 class CCoinsViewCache;
 class CTransaction;
 class CValidationState;
+
+bool is_icann_tld(std::string tld);
 
 /** Transaction validation functions */
 

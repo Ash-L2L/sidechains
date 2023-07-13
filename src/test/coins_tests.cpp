@@ -175,10 +175,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
             } else {
                 removed_an_entry = true;
                 coin.Clear();
-                bool fBitNameReservation= false;
-                bool fBitName = false;
-                uint256 nAssetID = uint256();
-                stack.back()->SpendCoin(COutPoint(txid, 0), fBitNameReservation, fBitName, nAssetID);
+                stack.back()->SpendCoin(COutPoint(txid, 0));
             }
         }
 
@@ -379,10 +376,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
 
             // Call UpdateCoins on the top cache
             CTxUndo undo;
-            CAmount amountAssetIn = CAmount(0);
-            int nBitNameN = -1;
-            uint256 nAssetID = uint256();
-            UpdateCoins(tx, *(stack.back()), undo, height, amountAssetIn, nBitNameN, nAssetID);
+            UpdateCoins(tx, *(stack.back()), undo, height);
 
             // Update the utxo set for future spends
             utxoset.insert(outpoint);
@@ -408,10 +402,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             // Disconnect the tx from the current UTXO
             // See code in DisconnectBlock
             // remove outputs
-            bool fBitNameRegistration = false;
-            bool fBitName = false;
-            uint256 nAssetID = uint256();
-            stack.back()->SpendCoin(utxod->first, fBitNameRegistration, fBitName, nAssetID);
+            stack.back()->SpendCoin(utxod->first);
             // restore inputs
             if (!tx.IsCoinBase()) {
                 const COutPoint &out = tx.vin[0].prevout;
@@ -668,10 +659,7 @@ BOOST_AUTO_TEST_CASE(ccoins_access)
 void CheckSpendCoins(CAmount base_value, CAmount cache_value, CAmount expected_value, char cache_flags, char expected_flags)
 {
     SingleEntryCacheTest test(base_value, cache_value, cache_flags);
-    bool fBitNameReservation = false;
-    bool fBitName = false;
-    uint256 nAssetID = uint256();
-    test.cache.SpendCoin(OUTPOINT, fBitNameReservation, fBitName, nAssetID);
+    test.cache.SpendCoin(OUTPOINT);
     test.cache.SelfTest();
 
     CAmount result_value;

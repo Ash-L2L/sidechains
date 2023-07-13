@@ -70,7 +70,6 @@ extern const char * DEFAULT_WALLET_DAT;
 
 static const int64_t TIMESTAMP_MIN = 0;
 
-struct BitNameTransactionData;
 class CBlockIndex;
 class CCoinControl;
 class COutput;
@@ -328,10 +327,6 @@ public:
     std::string strFromAccount;
     int64_t nOrderPos; //!< position in ordered transaction list
 
-    CAmount amountAssetIn;
-    int nControlN = -1;
-    // asset ID created by the tx
-    uint256 nAssetID = uint256();
     // bitname for reservations / registrations
     std::string strName = "";
     // salt for bitname reservations
@@ -398,9 +393,6 @@ public:
         nImmatureWatchCreditCached = 0;
         nChangeCached = 0;
         nOrderPos = -1;
-        amountAssetIn = CAmount(0);
-        nControlN = -1;
-        nAssetID = uint256();
         strName = "";
         sok = uint256();
     }
@@ -432,9 +424,6 @@ public:
         READWRITE(nTimeReceived);
         READWRITE(fFromMe);
         READWRITE(fSpent);
-        READWRITE(amountAssetIn);
-        READWRITE(nControlN);
-        READWRITE(nAssetID);
         READWRITE(strName);
         READWRITE(sok);
 
@@ -729,7 +718,7 @@ private:
 
     /* Used by TransactionAddedToMemorypool/BlockConnected/Disconnected.
      * Should be called with pindexBlock and posInBlock if this is for a transaction that is included in a block. */
-    void SyncTransaction(const CTransactionRef& tx, const CBlockIndex *pindex = nullptr, int posInBlock = 0, int nControlN = -1, uint256 nAssetID = uint256());
+    void SyncTransaction(const CTransactionRef& tx, const CBlockIndex *pindex = nullptr, int posInBlock = 0);
 
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
@@ -868,7 +857,7 @@ public:
     void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlySafe=true, const CCoinControl *coinControl = nullptr, const CAmount& nMinimumAmount = 1, const CAmount& nMaximumAmount = MAX_MONEY, const CAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t nMaximumCount = 0, const int nMinDepth = 0, const int nMaxDepth = 9999999) const;
 
     void AvailableBitNameReservations(std::vector<COutput>& vCoins, uint256 txid = uint256()) const;
-    void AvailableBitNames(std::vector<COutput>& vCoins, uint256 txid = uint256()) const;
+    void AvailableBitNames(std::vector<COutput>& vCoins, uint256 txid = uint256(), uint256 nAssetID = uint256()) const;
 
     /**
      * Return list of available coins and locked coins grouped by non-change output address.
@@ -967,9 +956,9 @@ public:
     bool AddToWallet(const CWalletTx& wtxIn, bool fFlushOnClose=true);
     bool LoadToWallet(const CWalletTx& wtxIn);
     void TransactionAddedToMempool(const CTransactionRef& tx) override;
-    void BlockConnected(const std::map<uint256, BitNameTransactionData>& mapAssetData, const std::shared_ptr<const CBlock>& pblock, const CBlockIndex *pindex, const std::vector<CTransactionRef>& vtxConflicted) override;
+    void BlockConnected(const std::shared_ptr<const CBlock>& pblock, const CBlockIndex *pindex, const std::vector<CTransactionRef>& vtxConflicted) override;
     void BlockDisconnected(const std::shared_ptr<const CBlock>& pblock) override;
-    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate, int nControlN = -1, uint256 nAssetID = uint256());
+    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const CBlockIndex* pIndex, int posInBlock, bool fUpdate);
     int64_t RescanFromTime(int64_t startTime, const WalletRescanReserver& reserver, bool update);
     CBlockIndex* ScanForWalletTransactions(CBlockIndex* pindexStart, CBlockIndex* pindexStop, const WalletRescanReserver& reserver, bool fUpdate = false);
     void TransactionRemovedFromMempool(const CTransactionRef &ptx) override;

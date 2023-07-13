@@ -70,7 +70,8 @@ CMutableTransaction::CMutableTransaction(const CTransaction& tx) :
     in4(tx.in4),
     cpk(tx.cpk),
     ca_cert(tx.ca_cert),
-    icann_witness(tx.icann_witness) {}
+    icann_witness(tx.icann_witness),
+    icann_registrations(tx.icann_registrations) {}
 
 uint256 CMutableTransaction::GetHash() const
 {
@@ -108,6 +109,7 @@ CTransaction::CTransaction() :
     fIn4(false),
     in4({ .s_addr = 0 }),
     cpk(),
+    icann_registrations(),
     hash() {}
 CTransaction::CTransaction(const CMutableTransaction &tx) :
     vin(tx.vin),
@@ -125,6 +127,7 @@ CTransaction::CTransaction(const CMutableTransaction &tx) :
     cpk(tx.cpk),
     ca_cert(tx.ca_cert),
     icann_witness(tx.icann_witness),
+    icann_registrations(tx.icann_registrations),
     hash(ComputeHash()) {}
 CTransaction::CTransaction(CMutableTransaction &&tx) :
     vin(std::move(tx.vin)),
@@ -142,6 +145,7 @@ CTransaction::CTransaction(CMutableTransaction &&tx) :
     cpk(tx.cpk),
     ca_cert(tx.ca_cert),
     icann_witness(tx.icann_witness),
+    icann_registrations(tx.icann_registrations),
     hash(ComputeHash()) {}
 
 CMainchainTransaction::CMainchainTransaction() :
@@ -155,9 +159,12 @@ CAmount CTransaction::GetValueOut() const
     bool fBitName = nVersion == TRANSACTION_BITNAME_CREATE_VERSION
                  || nVersion == TRANSACTION_BITNAME_UPDATE_VERSION;
 
-    // Skip the BitName output of a BitName creation or update
     std::vector<CTxOut>::const_iterator it;
-    if (fBitName && vout.size() >= 1)
+    // Skip the BitName outputs of an icann multi-registration
+    if (nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION)
+        it = vout.begin() + icann_registrations.size();
+    // Skip the BitName output of a BitName creation or update
+    else if (fBitName && vout.size() >= 1)
         it = vout.begin() + 1;
     else
         it = vout.begin();

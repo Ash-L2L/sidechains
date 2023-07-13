@@ -84,56 +84,154 @@ void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possi
     cachedCoinsUsage += it->second.coin.DynamicMemoryUsage();
 }
 
-void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, uint256 nAssetID, const CAmount amountAssetIn, int nBitNameN, uint256 nNewAssetID, bool check) {
+// FIXME: doesn't work for icann batch registration
+void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, bool check) {
     bool fCoinbase = tx.IsCoinBase();
     const uint256& txid = tx.GetHash();
 
-    if (amountAssetIn > 0) {
-        // One of the input coins is a BitName, coins adding up to the asset
-        // input amount will be marked as BitNames
-
-        // Label BitName outputs until we account for all BitName input
-        CAmount amountAssetOut = CAmount(0);
-        for (size_t i = 0; i < tx.vout.size(); ++i) {
-            bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
-            bool fAsset = amountAssetIn > amountAssetOut;
-            bool fBitName =
-                (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION
-                || tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION)
-                && i == 0;
-            uint256 nID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
-            nID = fBitName ? nID : uint256();
-            uint256 commitment = fBitName ? tx.commitment : uint256();
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false, fBitName, nID, commitment), overwrite);
-            if (fAsset)
-                amountAssetOut += tx.vout[i].nValue;
+    if (tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION) {
+        if (tx.sok == uint256()) {
+            // bitname reservation tx
+            for (size_t i = 0; i < tx.vout.size(); ++i) {
+                bool overwrite =
+                    check ? cache.HaveCoin(COutPoint(txid, i)) : false;
+                // bitname reservation output is the first output
+                bool fBitNameReservationOutput = (i == 0);
+                uint256 nAssetID =
+                    fBitNameReservationOutput ? tx.GetHash() : uint256();
+                uint256 commitment =
+                    fBitNameReservationOutput ? tx.commitment : uint256();
+                cache.AddCoin(
+                    COutPoint(txid, i),
+                    Coin(
+                        tx.vout[i],
+                        nHeight,
+                        false,
+                        fBitNameReservationOutput,
+                        false,
+                        nAssetID,
+                        commitment
+                    ),
+                    overwrite
+                );
+            }
+        } else {
+            // bitname registration tx
+            for (size_t i = 0; i < tx.vout.size(); ++i) {
+                bool overwrite =
+                    check ? cache.HaveCoin(COutPoint(txid, i)) : false;
+                // bitname registration output is the first output
+                bool fBitNameRegistrationOutput = (i == 0);
+                uint256 nAssetID =
+                    fBitNameRegistrationOutput ? tx.name_hash : uint256();
+                uint256 commitment =
+                    fBitNameRegistrationOutput ? tx.commitment : uint256();
+                cache.AddCoin(
+                    COutPoint(txid, i),
+                    Coin(
+                        tx.vout[i],
+                        nHeight,
+                        false,
+                        false,
+                        fBitNameRegistrationOutput,
+                        nAssetID,
+                        commitment
+                    ),
+                    overwrite
+                );
+            }
         }
-    }
-    else
-    {
-        // The first output of a BitName creation transaction is the bitname
-        // output.
-        // The rest are normal outputs
-        bool fNewReservation = tx.nVersion == TRANSACTION_BITNAME_CREATE_VERSION;
+    } else if (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) {
+        // get the last input coin, which is the bitname to be updated
+        const COutPoint& lastOutpoint = tx.vin.back().prevout;
+        const Coin& lastInputCoin = cache.AccessCoin(lastOutpoint);
+
         for (size_t i = 0; i < tx.vout.size(); ++i) {
-            bool fBitNameReservation = fNewReservation && i == 0;
-            bool fBitNameUpdate = (tx.nVersion == TRANSACTION_BITNAME_UPDATE_VERSION) && i == 0;
-            uint256 nID = (nNewAssetID != uint256()) ? nNewAssetID : nAssetID;
-            nID = (fBitNameReservation || fBitNameUpdate) ? nID : uint256();
-            bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
-            uint256 commitment = (fBitNameReservation || fBitNameUpdate) ? tx.commitment : uint256();
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, fBitNameReservation, fBitNameUpdate, nID, commitment), overwrite);
+            bool overwrite =
+                check ? cache.HaveCoin(COutPoint(txid, i)) : false;
+            // bitname output is the first output
+            bool fBitNameOutput = (i == 0);
+            uint256 nAssetID =
+                fBitNameOutput ? lastInputCoin.nAssetID : uint256();
+            uint256 commitment =
+                fBitNameOutput ? tx.commitment : uint256();
+            cache.AddCoin(
+                COutPoint(txid, i),
+                Coin(
+                    tx.vout[i],
+                    nHeight,
+                    false,
+                    false,
+                    fBitNameOutput,
+                    nAssetID,
+                    commitment
+                ),
+                overwrite
+            );
+        }
+    } else if (tx.nVersion == TRANSACTION_BITNAME_REGISTER_ICANN_VERSION) {
+        // compute name hashes (asset IDs) for registrations
+        std::vector<uint256> name_hashes =
+            std::vector<uint256>(tx.icann_registrations.size(), uint256());
+        std::transform(
+            tx.icann_registrations.begin(),
+            tx.icann_registrations.end(),
+            name_hashes.begin(),
+            [](const std::string& registration){
+                uint256 hash_result;
+                CHash256().Write(
+                    (unsigned char*) registration.data(),
+                    registration.size()
+                )
+                .Finalize((unsigned char*) &hash_result);
+                return hash_result;
+            }
+        );
+        for (size_t i = 0; i < tx.vout.size(); ++i) {
+            bool overwrite =
+                check ? cache.HaveCoin(COutPoint(txid, i)) : false;
+            // bitname registrations come before bitcoin outputs
+            bool fBitNameOutput = (i < tx.icann_registrations.size());
+            uint256 nAssetID =
+                fBitNameOutput ? name_hashes[i] : uint256();
+            cache.AddCoin(
+                COutPoint(txid, i),
+                Coin(
+                    tx.vout[i],
+                    nHeight,
+                    false,
+                    false,
+                    fBitNameOutput,
+                    nAssetID,
+                    uint256()
+                ),
+                overwrite
+            );
+        }
+    } else {
+        for (size_t i = 0; i < tx.vout.size(); ++i) {
+            bool overwrite =
+                check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
+            cache.AddCoin(
+                COutPoint(txid, i),
+                Coin(
+                    tx.vout[i],
+                    nHeight,
+                    fCoinbase,
+                    false,
+                    false,
+                    uint256(),
+                    uint256()
+                ),
+                overwrite
+            );
         }
     }
 }
 
-bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, bool& fBitNameReservation, bool& fBitName, uint256& nAssetID, Coin* moveout) {
+bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, Coin* moveout) {
     CCoinsMap::iterator it = FetchCoin(outpoint);
     if (it == cacheCoins.end()) return false;
-    // FIXME: why are these fields not used?
-    fBitNameReservation = it->second.coin.fBitNameReservation;
-    fBitName = it->second.coin.fBitName;
-    nAssetID = it->second.coin.nAssetID;
     cachedCoinsUsage -= it->second.coin.DynamicMemoryUsage();
     if (moveout) {
         *moveout = std::move(it->second.coin);
