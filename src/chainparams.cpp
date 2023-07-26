@@ -9,6 +9,7 @@
 #include <chainparamsseeds.h>
 #include <consensus/merkle.h>
 #include <consensus/params.h>
+#include <key.h>
 #include <tinyformat.h>
 #include <util.h>
 #include <utilstrencodings.h>
@@ -197,9 +198,20 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x6fb2c5081b13ecf369b324db61406244c7df519b4676e28b536a4ef546e387eb");
         // FIXME: replace with a real key hash
-        consensus.IcannRegistrationKeyHash =
-            uint256S("0x0000000000000000000000000000000000000000000000000000000000000000");
-
+        std::string icann_registration_passphrase =
+            "layer two labs icann reg test";
+        uint256 icann_reg_secret = uint256();
+        CHash256().Write((unsigned char*) icann_registration_passphrase.data(),
+                         icann_registration_passphrase.size())
+                  .Finalize((unsigned char*) &icann_reg_secret);
+        CKey icann_reg_key = CKey();
+        icann_reg_key.Set(
+            icann_reg_secret.begin(),
+            icann_reg_secret.end(),
+            true
+        );
+        CPubKey icann_reg_pubkey = icann_reg_key.GetPubKey();
+        consensus.IcannRegistrationKeyHash = icann_reg_pubkey.GetHash();
 
         pchMessageStart[0] = 0x36;
         pchMessageStart[1] = 0x4d;
