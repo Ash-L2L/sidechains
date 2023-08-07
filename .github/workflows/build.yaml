@@ -121,3 +121,68 @@ jobs:
           name: bitassets-qt
           path: src/qt/bitassets-qt
           if-no-files-found: error
+
+  build-macos-latest:
+    name: Build (macOS Latest)
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies
+        run: |
+          brew install \
+            automake \
+            berkeley-db4 \
+            boost \
+            libevent \
+            libtool \
+            miniupnpc \
+            openssl \
+            pkg-config \
+            protobuf \
+            python3 \
+            qt@5 \
+            zmq
+
+      # Optional
+      - name: Install Dependencies (RSVG)
+        run: brew install librsvg
+        
+      - name: AutoGen
+        run: ./autogen.sh
+      
+      - name: Configure
+        run: ./configure
+
+      - name: Build
+        run: make -j 3
+
+      - name: 'Upload Artifacts (bitassetsd)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassetsd-macos-x86_64
+          path: src/bitassetsd
+          if-no-files-found: error
+      
+      - name: 'Upload Artifacts (bitassets-cli)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassets-cli-macos-x86_64
+          path: src/bitassets-cli
+          if-no-files-found: error
+      
+      - name: 'Upload Artifacts (bitassets-tx)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassets-tx-macos-x86_64
+          path: src/bitassets-tx
+          if-no-files-found: error
+      
+      - name: 'Upload Artifacts (bitassets-qt)'
+        uses: actions/upload-artifact@v2
+        with:
+          name: bitassets-qt-macos-x86_64
+          path: src/qt/bitassets-qt
+          if-no-files-found: error
