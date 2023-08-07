@@ -157,7 +157,9 @@ jobs:
         run: |
           CXX=$(brew --prefix llvm@15)/bin/clang++ ./configure \
             QT_LIBS="-L/usr/local/opt/qt@5/lib" \
-            CPPFLAGS="-I/usr/local/opt/qt@5/include"
+            CPPFLAGS="-I/usr/local/opt/qt@5/include" \
+            --with-qt-incdir="/usr/local/opt/qt@5/include" \
+            --with-qt-libdir="/usr/local/opt/qt@5/lib"
 
       - name: Build
         run: make -j 3
