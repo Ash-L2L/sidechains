@@ -141,7 +141,7 @@ jobs:
             miniupnpc \
             openssl \
             pkg-config \
-            protobuf \
+            protobuf@21 \
             python3 \
             qt@5 \
             zmq
