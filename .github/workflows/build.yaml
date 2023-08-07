@@ -154,7 +154,7 @@ jobs:
         run: ./autogen.sh
       
       - name: Configure
-        run: ./configure
+        run: CXX=$(brew --prefix llvm@15)/bin/clang++ ./configure
 
       - name: Build
         run: make -j 3
