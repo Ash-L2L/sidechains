@@ -158,6 +158,7 @@ jobs:
           CXX=$(brew --prefix llvm@15)/bin/clang++ ./configure \
             QT_LIBS="-L/usr/local/opt/qt@5/lib" \
             CPPFLAGS="-I/usr/local/opt/qt@5/include" \
+            --with-qt-bindir="/usr/local/opt/qt@5/bin" \
             --with-qt-incdir="/usr/local/opt/qt@5/include" \
             --with-qt-libdir="/usr/local/opt/qt@5/lib"
 
