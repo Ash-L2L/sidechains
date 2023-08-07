@@ -102,8 +102,12 @@ void SwitchBitNamesDialog::Update()
         ui->tableWidgetNames->insertRow(nRow);
 
         // Get BitNameDB data
+        Coin coin;
+        if (!pcoinsdbview->GetCoin(COutPoint(o.tx->tx->GetHash(), o.i), coin)) {
+            return;
+        }
         BitName bitname;
-        if (!pbitnametree->GetBitName(o.tx->nAssetID, bitname)) {
+        if (!pbitnametree->GetBitName(coin.nAssetID, bitname)) {
             return;
         }
 
