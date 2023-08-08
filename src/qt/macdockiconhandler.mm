@@ -31,18 +31,6 @@ bool dockClickHandler(id self,SEL _cmd,...) {
     return false;
 }
 
-union {
-    id (*typed_msgSend)(id, SEL);
-    void *ptr;
-} union_msgSend;
-union_msgSend.ptr = (void *)objc_msgSend;
-
-union {
-    Class (*typed_msgSendToGetClass)(id, SEL);
-    void *ptr;
-} union_msgSendToGetClass;
-union_msgSendToGetClass.ptr = (void *)objc_msgSend;
-
 void setupDockClickHandler() {
     union {
         id (*typed_msgSend)(id, SEL);
