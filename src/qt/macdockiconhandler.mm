@@ -44,6 +44,18 @@ union {
 union_msgSendToGetClass.ptr = (void *)objc_msgSend;
 
 void setupDockClickHandler() {
+    union {
+        id (*typed_msgSend)(id, SEL);
+        void *ptr;
+    } union_msgSend;
+    union_msgSend.ptr = (void *)objc_msgSend;
+
+    union {
+        Class (*typed_msgSendToGetClass)(id, SEL);
+        void *ptr;
+    } union_msgSendToGetClass;
+    union_msgSendToGetClass.ptr = (void *)objc_msgSend;
+    
     Class cls = objc_getClass("NSApplication");
     id appInst = union_msgSend.typed_msgSend((id)cls, sel_registerName("sharedApplication"));
     
