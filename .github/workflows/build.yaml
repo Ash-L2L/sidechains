@@ -157,7 +157,7 @@ jobs:
         run: |
           CXX=$(brew --prefix llvm@15)/bin/clang++ ./configure \
             CPPFLAGS="-I/usr/local/opt/qt@5/include" \
-            PROTOBUF_LIBS="/usr/local/opt/protobuf@21/lib" \
+            PROTOBUF_LIBS="/usr/local/opt/protobuf@21/lib/libprotobuf.a" \
             PROTOBUF_CFLAGS="-I/usr/local/opt/protobuf@21/include" \
             QT_LIBS="-L/usr/local/opt/qt@5/lib" \
             --with-protoc-bindir="/usr/local/opt/protobuf@21/bin" \
