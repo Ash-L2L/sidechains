@@ -31,17 +31,21 @@ bool dockClickHandler(id self,SEL _cmd,...) {
     return false;
 }
 
+union MsgSendUnion {
+    id (*typed_msgSend)(id, SEL);
+    void *ptr;
+} union_msgSend;
+
+union ClassMsgSendUnion {
+    Class (*typed_msgSendToGetClass)(id, SEL);
+    void *ptr;
+} union_msgSendToGetClass;
+
 void setupDockClickHandler() {
-    union {
-        id (*typed_msgSend)(id, SEL);
-        void *ptr;
-    } union_msgSend;
+    MsgSendUnion union_msgSend;
     union_msgSend.ptr = (void *)objc_msgSend;
 
-    union {
-        Class (*typed_msgSendToGetClass)(id, SEL);
-        void *ptr;
-    } union_msgSendToGetClass;
+    ClassMsgSendUnion union_msgSendToGetClass;
     union_msgSendToGetClass.ptr = (void *)objc_msgSend;
     
     Class cls = objc_getClass("NSApplication");
