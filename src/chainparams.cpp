@@ -125,8 +125,8 @@ public:
         std::printf("Genesis Merkle Root: 0x%s\n", genesis.hashMerkleRoot.ToString().c_str());
         std::fprintf(stderr, "Genesis Merkle Root: 0x%s\n", genesis.hashMerkleRoot.ToString().c_str());
 
-        assert(consensus.hashGenesisBlock == uint256S("0xc4229719a13b1bd38c9c157d534e101badf74702736456be75d8f8808a9b1aed"));
-        assert(genesis.hashMerkleRoot == uint256S("0x8eb1364f43885edf1322b2d32095e57abb03c32a61a80ac25c8db3de58e16b8a"));
+        assert(consensus.hashGenesisBlock == uint256S("0x75411b6e8a5219ae57447febe779a8e92adbe133feb5d4a30de3b02c52e674b0"));
+        assert(genesis.hashMerkleRoot == uint256S("0xdd67edb32e51fe80f60b0bee6b54eee556bda41df00bcef289044aefaafcaadd"));
 
         vSeeds.clear();
 
