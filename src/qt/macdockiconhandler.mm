@@ -13,6 +13,7 @@
 #include <Cocoa/Cocoa.h>
 #include <objc/objc.h>
 #include <objc/message.h>
+#include <objc/runtime.h>
 
 #if QT_VERSION < 0x050000
 extern void qt_mac_set_dock_menu(QMenu *);
