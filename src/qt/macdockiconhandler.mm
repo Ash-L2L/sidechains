@@ -31,15 +31,25 @@ bool dockClickHandler(id self,SEL _cmd,...) {
     return false;
 }
 
+union {
+    id (*typed_msgSend)(id, SEL);
+    void *ptr;
+} union_msgSend;
+union_msgSend.ptr = (void *)objc_msgSend;
+
+union {
+    Class (*typed_msgSendToGetClass)(id, SEL);
+    void *ptr;
+} union_msgSendToGetClass;
+union_msgSendToGetClass.ptr = (void *)objc_msgSend;
+
 void setupDockClickHandler() {
     Class cls = objc_getClass("NSApplication");
-    id (*typed_msgSend)(id, SEL) = (void *)objc_msgSend;
-    id appInst = typed_msgSend((id)cls, sel_registerName("sharedApplication"));
+    id appInst = union_msgSend.typed_msgSend((id)cls, sel_registerName("sharedApplication"));
     
     if (appInst != nullptr) {
-        id delegate = typed_msgSend(appInst, sel_registerName("delegate"));
-        Class (*typed_msgSendToGetClass)(id, SEL) = (void *)objc_msgSend;
-        Class delClass = typed_msgSendToGetClass(delegate,  sel_registerName("class"));
+        id delegate = union_msgSend.typed_msgSend(appInst, sel_registerName("delegate"));
+        Class delClass = union_msgSendToGetClass.typed_msgSendToGetClass(delegate,  sel_registerName("class"));
         SEL shouldHandle = sel_registerName("applicationShouldHandleReopen:hasVisibleWindows:");
         if (class_getInstanceMethod(delClass, shouldHandle))
             class_replaceMethod(delClass, shouldHandle, (IMP)dockClickHandler, "B@:");
