@@ -33,11 +33,13 @@ bool dockClickHandler(id self,SEL _cmd,...) {
 
 void setupDockClickHandler() {
     Class cls = objc_getClass("NSApplication");
-    id appInst = objc_msgSend((id)cls, sel_registerName("sharedApplication"));
+    id (*typed_msgSend)(id, SEL) = (void *)objc_msgSend;
+    id appInst = typed_msgSend((id)cls, sel_registerName("sharedApplication"));
     
     if (appInst != nullptr) {
-        id delegate = objc_msgSend(appInst, sel_registerName("delegate"));
-        Class delClass = (Class)objc_msgSend(delegate,  sel_registerName("class"));
+        id delegate = typed_msgSend(appInst, sel_registerName("delegate"));
+        Class (*typed_msgSendToGetClass)(id, SEL) = (void *)objc_msgSend;
+        Class delClass = typed_msgSendToGetClass(delegate,  sel_registerName("class"));
         SEL shouldHandle = sel_registerName("applicationShouldHandleReopen:hasVisibleWindows:");
         if (class_getInstanceMethod(delClass, shouldHandle))
             class_replaceMethod(delClass, shouldHandle, (IMP)dockClickHandler, "B@:");
